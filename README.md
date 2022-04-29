@@ -42,14 +42,21 @@ make
 ```
 
 - download osm
-> wget -q http://download.geofabrik.de/europe/germany/berlin-latest.osm.pbf -O openstreetmap-latest.osm.pbf
+  ```sh
+  wget -q http://download.geofabrik.de/europe/germany/berlin-latest.osm.pbf -O openstreetmap-latest.osm.pbf
+  ```
 
 - filter osm file
-> osmium tags-filter -O -o openstreetmap-filtered.osm.pbf -e filter-expressions.txt openstreetmap-latest.osm.pbf
+  ```sh
+  osmium tags-filter -O -o openstreetmap-filtered.osm.pbf -e filter-expressions.txt openstreetmap-latest.osm.pbf
+  ```
 
 - import filtered osm file into db
-> osm2pgsql -c -O flex -S highways.lua openstreetmap-filtered.osm.pbf
+  ```sh
+  osm2pgsql -c -O flex -S highways.lua openstreetmap-filtered.osm.pbf
+  ```
 
 - create additional db tables
-> psql -f db_scripts.sql
-
+  ```sh
+  psql -f db_scripts.sql
+  ```
