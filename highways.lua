@@ -336,7 +336,23 @@ function Split(s, delimiter)
     return result;
 end
 
+function has_area_tags(tags)
+    if tags.area == 'yes' then
+        return true
+    end
+    if tags.area == 'no' then
+        return false
+    end
+
+    return false
+end
+
 function osm2pgsql.process_way(object)
+
+    -- ignore all objects with area=yes
+    if has_area_tags(object.tags) then
+        return
+    end
 
     -- Get the type of "highway" and remove it from the tags
     local type = object.tags["highway"]
