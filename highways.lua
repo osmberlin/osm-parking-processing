@@ -2,7 +2,6 @@ local json = require('dkjson')
 local srid = 4326
 local tables = {}
 
-
 tables.highways = osm2pgsql.define_way_table('highways', {
     { column = 'id', sql_type = 'serial', create_only = true },
     { column = 'type', type = 'text' },
@@ -359,8 +358,8 @@ function osm2pgsql.process_way(object)
     local parking_right_position = object.tags["parking:lane:right:position"]
     local parking_left_width = object.tags["parking:lane:left:width"]
     local parking_right_width = object.tags["parking:lane:right:width"]
-    local parking_left_width = object.tags["parking:lane:left:width:carriageway"]
-    local parking_right_width = object.tags["parking:lane:right:width:carriageway"]
+    local parking_left_width_carriageway = object.tags["parking:lane:left:width:carriageway"]
+    local parking_right_width_carriageway = object.tags["parking:lane:right:width:carriageway"]
     local parking_left_offset = object.tags["parking:lane:left:offset"]
     local parking_right_offset = object.tags["parking:lane:right:offset"]
 
@@ -391,8 +390,8 @@ function osm2pgsql.process_way(object)
 
     local parking = nil
     local width_proc = nil
-    local parking_left_width_carriageway = nil
-    local parking_right_width_carriageway = nil
+    --local parking_left_width_carriageway = nil
+    --local parking_right_width_carriageway = nil
 
 
     -- Parkposition ermitteln (insbes. Straßen-/Bordsteinparken)
@@ -676,8 +675,8 @@ function osm2pgsql.process_way(object)
 
     --print(width, width_effective, parking_left_width_carriageway, parking_right_width_carriageway)
     local width_effective = tonumber(width) - tonumber(parking_left_width_carriageway) - tonumber(parking_right_width_carriageway)
-    local parking_left_offset = (width_effective / 2) + tonumber(parking_left_width_carriageway)
-    local parking_right_offset = -(width_effective / 2) - tonumber(parking_right_width_carriageway)
+    parking_left_offset = (width_effective / 2) + tonumber(parking_left_width_carriageway)
+    parking_right_offset = -(width_effective / 2) - tonumber(parking_right_width_carriageway)
 
 
     if highway_types[type] then
