@@ -1,4 +1,4 @@
-# strassenraum-berlin
+# osm-parking-processing
 
 This project is based on https://github.com/SupaplexOSM/strassenraumkarte-neukoelln and an attempt to process all the data for any city. 
 
