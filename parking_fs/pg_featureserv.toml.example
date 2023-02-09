@@ -1,0 +1,85 @@
+[Server]
+# Accept connections on this subnet (default accepts on all)
+HttpHost = "0.0.0.0"
+
+# IP ports to listen on
+HttpPort = 9000
+# HttpsPort = 9001
+
+# HTTPS configuration - TLS server certificate full chain and key
+# If these are not specified, the TLS server will not be started
+# TlsServerCertificateFile = ""
+# TlsServerPrivateKeyFile = ""
+
+# Advertise URLs relative to this server name and path
+# The default is to look this up from incoming request headers
+# Note: do not add a trailing slash.
+#    UrlBase = "http://localhost:9000"
+
+# Optional path to add to the service base URL
+# If set, all routes will be prefixed with this path
+# (e.g. "/pg_featureserv", "/services/pg_featureserv", etc.)
+# Note: No trailing slash is necessary, pg_featureserv automatically
+# adds a trailing slash for you.
+# BasePath = "/"
+
+# String to return for Access-Control-Allow-Origin header
+#    CORSOrigins = "*"
+
+# set Debug to true to run in debug mode (can also be set on cmd-line)
+#    Debug = true
+
+# Read html templates from this directory
+AssetsPath = "./assets"
+
+# Maximum duration for reading entire request (in seconds)
+ReadTimeoutSec = 5
+
+# Maximum duration for writing response (in seconds)
+# Also controls maximum time for processing request
+WriteTimeoutSec = 30
+
+# Database functions allowed in the transform query parameter
+#TransformFunctions = [
+#    "ST_Boundary", "ST_Centroid", "ST_Envelope", "ST_PointOnSurface",
+#    "ST_Buffer", "ST_ConvexHull", "ST_MinimumBoundingCircle", "ST_OffsetCurve",
+#    "ST_GeneratePoints", "ST_Simplify", "ST_ChaikinSmoothing", "ST_LineSubstring"
+#]
+
+[Database]
+# Database connection
+# postgresql://username:password@host/dbname
+# DATABASE_URL environment variable takes precendence if set.
+# DbConnection = "postgresql://username:password@host/dbname"
+
+# Close pooled connections after this interval
+# 1d, 1h, 1m, 1s, see https://golang.org/pkg/time/#ParseDuration
+# DbPoolMaxConnLifeTime = "1h"
+
+# Hold no more than this number of connections in the database pool
+# DbPoolMaxConns = 4
+
+# Publish only these schemas and tables (default is to publish all spatial tables)
+# TableIncludes = [ "public", "priv_schema.tbl" ]
+
+# Do not publish these schemas and tables
+# TableExcludes = [ "priv_schema", "public.my_tbl" ]
+
+# Publish functions from these schemas (default is publish postgisftw)
+# FunctionIncludes = [ "postgisftw", "schema2" ]
+
+[Paging]
+# The default number of features in a response
+LimitDefault = 20
+# Maxium number of features in a response
+LimitMax = 10000
+
+[Metadata]
+# Title for this service
+#Title = "pg-featureserv"
+# Description of this service
+#Description = "Crunchy Data Feature Server for PostGIS"
+
+[Website]
+# URL for the map view basemap
+BasemapUrl = "http://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"

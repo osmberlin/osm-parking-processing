@@ -1,0 +1,86 @@
+{
+    "directory": "./output/",
+    "extracts": [
+        {
+            "output": "berlin.osm.pbf",
+            "output_format": "pbf",
+            "description": "Berlin, r/62422",
+            "polygon": {
+                "file_name": "boundaries/berlin.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "hannover.osm.pbf",
+            "output_format": "pbf",
+            "description": "Hannover, r/59418 ",
+            "polygon": {
+                "file_name": "boundaries/hannover.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "kiel.osm.pbf",
+            "output_format": "pbf",
+            "description": "Kiel, r/27021 ",
+            "polygon": {
+                "file_name": "boundaries/kiel.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "bremen.osm.pbf",
+            "output_format": "pbf",
+            "description": "Bremen ohne Bremerhaven, r/62718 ",
+            "polygon": {
+                "file_name": "boundaries/bremen.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "linkoepings_kommun.osm.pbf",
+            "output_format": "pbf",
+            "description": "Linköpings kommun, r/935467 ",
+            "polygon": {
+                "file_name": "boundaries/linkoepings_kommun.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "bonn.osm.pbf",
+            "output_format": "pbf",
+            "description": "Bonn, r/62508 ",
+            "polygon": {
+                "file_name": "boundaries/bonn.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "bamberg.osm.pbf",
+            "output_format": "pbf",
+            "description": "Bamberg, r/62525 ",
+            "polygon": {
+                "file_name": "boundaries/bamberg.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "backnang.osm.pbf",
+            "output_format": "pbf",
+            "description": "Backnang, r/165637 ",
+            "polygon": {
+                "file_name": "boundaries/backnang.geojson",
+                "file_type": "geojson"
+            }
+        },
+        {
+            "output": "saarbruecken.osm.pbf",
+            "output_format": "pbf",
+            "description": "Saarbrücken, r/1187159 ",
+            "polygon": {
+                "file_name": "boundaries/saarbruecken.geojson",
+                "file_type": "geojson"
+            }
+        }
+    ]
+}

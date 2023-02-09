@@ -1,0 +1,134 @@
+version: '3'
+
+services:
+  parking_import:
+    build:
+      context: parking_import/
+    container_name: parking_import
+    restart: unless-stopped
+    command: bash -c "/config/import_osm.sh"
+    depends_on:
+      parking_db:
+        condition: service_healthy
+    links:
+      - parking_db
+    networks:
+      - osmparking
+    volumes:
+      - ./parking_import:/config
+      - ./osm:/osm
+      - ./data:/data
+    env_file:
+      - parking_import/.env
+    restart: on-failure:5
+
+  parking_processing:
+    build:
+      context: parking_processing/
+    container_name: parking_processing
+    command: bash -c "/config/process_osm.sh"
+    restart: unless-stopped
+    depends_on:
+      - parking_db
+    links:
+      - parking_db
+    networks:
+      - osmparking
+    volumes:
+      - ./parking_processing:/config
+      - ./osm:/osm
+      - ./data:/data
+    env_file:
+      - parking_processing/.env
+    restart: on-failure:5
+
+  parking_db:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: parking_db
+    restart: unless-stopped
+    shm_size: 536870912 #512MB
+    ports:
+      - '5431:5432'
+    networks:
+      - osmparking
+    env_file:
+      - parking_db/.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  parking_vt:
+    image: pramsey/pg_tileserv:latest
+    container_name: parking_vt
+    restart: unless-stopped
+    env_file:
+      - parking_vt/pg_tileserv.env
+    depends_on:
+      parking_db:
+        condition: service_healthy
+    volumes:
+      - ./parking_vt:/config
+    links:
+      - parking_db
+    ports:
+      - '7800:7800'
+    networks:
+      - osmparking
+
+  parking_fs:
+    image: pramsey/pg_featureserv:latest
+    container_name: parking_fs
+    restart: unless-stopped
+    command: "--config /config/pg_featureserv.toml"
+    env_file:
+      - parking_fs/pg_featureserv.env
+    depends_on:
+      parking_db:
+        condition: service_healthy
+    volumes:
+      - ./parking_fs:/config
+    links:
+      - parking_db
+    ports:
+      - '9000:9000'
+    networks:
+      - osmparking
+
+  parking_cache:
+    image: eeacms/varnish
+    container_name: parking_cache
+    ports:
+      - '8080:6081'
+    environment:
+      BACKENDS: 'parking_vt:7800'
+      DNS_ENABLED: 'false'
+      COOKIES: 'true'
+      PARAM_VALUE: '-p default_ttl=600'
+    networks:
+      - osmparking
+    depends_on:
+      - parking_vt
+
+
+#  parking_pgadmin:
+#    container_name: parking_pgadmin
+#    image: dpage/pgadmin4
+#    environment:
+#      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-parking@example.org}
+#      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+#      PGADMIN_CONFIG_SERVER_MODE: 'False'
+#    volumes:
+#      - parking_v_pgadmin:/var/lib/pgadmin
+#    ports:
+#      - "${PGADMIN_PORT:-5050}:80"
+#    networks:
+#      - osmparking
+#    restart: unless-stopped
+
+networks:
+  osmparking:
+
+volumes:
+  parking_v_pgadmin:

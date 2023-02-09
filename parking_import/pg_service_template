@@ -1,0 +1,6 @@
+[osmdb]
+host=parking_db
+port=5432
+dbname=docker
+user=docker
+password=docker
