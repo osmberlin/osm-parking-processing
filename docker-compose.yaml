@@ -45,8 +45,11 @@ services:
   parking_db:
     image: postgis/postgis:15-3.3-alpine
     container_name: parking_db
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
     restart: unless-stopped
     shm_size: 536870912 #512MB
+    volumes:
+      - ./parking_db/postgresql.conf:/etc/postgresql/postgresql.conf
     ports:
       - '5431:5432'
     networks:
