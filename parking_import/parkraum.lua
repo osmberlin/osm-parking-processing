@@ -106,6 +106,46 @@ tables.parking_poly = osm2pgsql.define_table({
     }
 })
 
+tables.obstacle_poly = osm2pgsql.define_table({
+    name = "obstacle_poly",
+    schema = import_schema,
+    ids = { type = 'any', id_column = 'osm_id', type_column = 'osm_type' },
+    columns = {
+        { column = 'id', sql_type = 'serial', create_only = true },
+        { column = 'advertising', type = 'text' },
+        { column = 'amenity', type = 'text' },
+        { column = 'barrier', type = 'text' },
+        { column = 'highway', type = 'text' },
+        { column = 'leisure', type = 'text' },
+        { column = 'man_made', type = 'text' },
+        { column = 'natural', type = 'text' },
+        { column = 'capacity', sql_type = 'numeric' },
+        { column = 'buffer', sql_type = 'numeric' },
+        { column = 'error_output', type = 'jsonb' },
+        { column = 'geom', type = 'geometry', projection = srid, not_null = true }
+    }
+})
+
+tables.obstacle_point = osm2pgsql.define_table({
+    name = "obstacle_point",
+    schema = import_schema,
+    ids = { type = 'any', id_column = 'osm_id', type_column = 'osm_type' },
+    columns = {
+        { column = 'id', sql_type = 'serial', create_only = true },
+        { column = 'advertising', type = 'text' },
+        { column = 'amenity', type = 'text' },
+        { column = 'barrier', type = 'text' },
+        { column = 'highway', type = 'text' },
+        { column = 'leisure', type = 'text' },
+        { column = 'man_made', type = 'text' },
+        { column = 'natural', type = 'text' },
+        { column = 'capacity', sql_type = 'numeric' },
+        { column = 'buffer', sql_type = 'numeric' },
+        { column = 'error_output', type = 'jsonb' },
+        { column = 'geom', type = 'point', projection = srid, not_null = true }
+    }
+})
+
 tables.area_highway = osm2pgsql.define_table({
     name = "area_highway",
     schema = import_schema,
@@ -395,6 +435,65 @@ function remove_whitespace(s)
   return s:gsub("%s+", "")
 end
 
+function obstacle_buffer(object)
+
+    local buffer_default          = 0.5 --default for all other objects
+    local buffer_street_lamp      = 0.4
+    local buffer_tree             = 1.5
+    local buffer_street_cabinet   = 1.5
+    local buffer_bollard          = 0.3
+    local buffer_advertising      = 1.4
+    local buffer_recycling        = 5.0
+    local buffer_traffic_sign     = 0.3
+    local buffer_bicycle_parking  = 1.6 --per stand - per capacity / 2
+    local buffer_sev_parking      = 5.0 --small electric vehicle parking
+    local buffer_parklet          = 5.0
+    local buffer_loading_ramp     = 2.0
+
+    local buffer = buffer_default
+
+    if object.tags["highway"] == 'street_lamp' then
+        buffer = buffer_street_lamp
+    end
+    if object.tags["natural"] == 'tree' then
+        buffer = buffer_tree
+    end
+    if object.tags["man_made"] == 'street_cabinet' then
+        buffer = buffer_street_cabinet
+    end
+    if object.tags["barrier"] == 'bollard' or object.tags["barrier"] == 'collision_protection' then
+        buffer = buffer_bollard
+    end
+    if object.tags["advertising"] then
+        buffer = buffer_advertising
+    end
+    if object.tags["amenity"] == 'recycling' then
+        buffer = buffer_recycling
+    end
+    if object.tags["highway"] == 'traffic_sign' or object.tags["barrier"] == 'barrier_board' then
+        buffer = buffer_traffic_sign
+    end
+    if object.tags["amenity"] == 'bicycle_parking' then
+        buffer = buffer_bicycle_parking
+    end
+    if object.tags["leisure"] == 'parklet' or object.tags["leisure"] == 'outdoor_seating' then
+        buffer = buffer_parklet
+    end
+    if object.tags["amenity"] == 'loading_ramp' then
+        buffer = buffer_loading_ramp
+    end
+    if object.tags["amenity"] == 'bicycle_parking' or object.tags["amenity"] == 'motorcycle_parking' or object.tags["amenity"] == 'bicycle_rental' then
+        local capacity = parse_units(object.tags["capacity"]) or 2
+        buffer = (math.min(capacity, 10) / 2) * buffer_bicycle_parking --limit size to capacity = 10 - better use polygons to map larger bicycle parkings!
+    end
+    if object.tags["amenity"] == 'small_electric_vehicle_parking' then
+        buffer = buffer_sev_parking
+    end
+
+    return buffer
+
+end
+
 function parse_units(input)
     -- from parking_import/flex-config/data-types.lua
     if not input then
@@ -456,6 +555,24 @@ end
 
 function osm2pgsql.process_way(object)
 
+    if object.tags["obstacle:parking"] == "yes"
+    then
+        local obstacle_buffer =  obstacle_buffer(object)
+
+        tables.obstacle_poly:insert({
+            advertising = object.tags["advertising"],
+            amenity = object.tags["amenity"],
+            barrier = object.tags["barrier"],
+            highway = object.tags["highway"],
+            leisure = object.tags["leisure"],
+            man_made = object.tags["man_made"],
+            natural = object.tags["natural"],
+            capacity = object.tags["capacity"],
+            buffer = obstacle_buffer,
+            error_output = object.tags["error_output"],
+            geom = object:as_polygon()
+        })
+    end
 
     -- process public transport objects and push them to db table
     local public_transport = object.tags["public_transport"]
@@ -492,10 +609,14 @@ function osm2pgsql.process_way(object)
     end
 
     -- process bicycle_parking objects and push them to db table
-    if object.is_closed and p_amenity == "bicycle_parking" or p_leisure == "parklet" or
+    if object.is_closed and (
+        p_amenity == "bicycle_parking" or
+        p_leisure == "parklet" or
         (p_amenity == "bicycle_rental" and rev_amenity_position[object.tags["bicycle_rental:position"]]) or
-        (p_amenity == "motorcycle_parking" and (rev_amenity_position[object.tags["motorcycle_parking:position"]]  or rev_amenity_position[object.tags["parking"]])) or
-        (p_amenity == "small_electric_vehicle_parking" and rev_amenity_position[object.tags["small_electric_vehicle_parking:position"]])
+        (p_amenity == "motorcycle_parking" and (rev_amenity_position[object.tags["motorcycle_parking:position"]] or rev_amenity_position[object.tags["parking"]])) or
+        (p_amenity == "small_electric_vehicle_parking" and rev_amenity_position[object.tags["small_electric_vehicle_parking:position"]]) or
+        (object.tags["bicycle_rental:position"] == 'yes')
+    )
     then
         local geom = object:as_polygon()
         tables.parking_poly:insert({
@@ -961,7 +1082,7 @@ function osm2pgsql.process_node(object)
 
     local crossing_check = object.tags["crossing"]
     if (object.tags["highway"] == "traffic_signals") or
-        (object.tags["highway"] == "crossing" and rev_crossing_allowed_values[crossing_check])
+            (object.tags["highway"] == "crossing" and rev_crossing_allowed_values[crossing_check])
     then
         tables.crossings:insert({
             highway = object.tags["highway"],
@@ -975,8 +1096,8 @@ function osm2pgsql.process_node(object)
         })
     end
 
-    if object.tags.highway == "bus_stop" or
-        object.tags.public_transport == "stop_position"
+    if object.tags["highway"] == "bus_stop" or
+            object.tags["public_transport"] == "stop_position"
     then
         --print("add row")
         tables.pt_stops:insert({
@@ -992,7 +1113,7 @@ function osm2pgsql.process_node(object)
         })
     end
 
-    if object.tags.amenity == "loading_ramp"
+    if object.tags["amenity"] == "loading_ramp"
     then
         tables.ramps:insert{
             operator = object.tags["operator"],
@@ -1001,7 +1122,7 @@ function osm2pgsql.process_node(object)
         }
     end
 
-    if object.tags.traffic_calming ~= nil
+    if object.tags["traffic_calming"] ~= nil
     then
         tables.traffic_calming_points:insert{
             traffic_calming = object.tags["traffic_calming"],
@@ -1013,7 +1134,7 @@ function osm2pgsql.process_node(object)
     -- process parking objects and push them to db table
     local p_amenity = object.tags["amenity"]
     if (p_amenity == "bicycle_parking" and rev_bicycle_parking_position[object.tags["bicycle_parking:position"]])
-        or p_amenity == "small_vehicle_parking"
+            or p_amenity == "small_vehicle_parking"
     then
         tables.amenity_parking_points:insert({
             amenity = p_amenity,
@@ -1028,6 +1149,27 @@ function osm2pgsql.process_node(object)
         })
         return
     end
+
+    if object.tags["obstacle:parking"] == "yes"
+    then
+        local obstacle_buffer =  obstacle_buffer(object)
+
+        tables.obstacle_point:insert({
+            advertising = object.tags["advertising"],
+            amenity = object.tags["amenity"],
+            barrier = object.tags["barrier"],
+            highway = object.tags["highway"],
+            leisure = object.tags["leisure"],
+            man_made = object.tags["man_made"],
+            natural = object.tags["natural"],
+            capacity = object.tags["capacity"],
+            buffer = obstacle_buffer,
+            error_output = object.tags["error_output"],
+            geom = object:as_point()
+        })
+    end
+
+
 
 end
 
