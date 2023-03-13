@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS ramps;
 DROP TABLE IF EXISTS service;
 DROP TABLE IF EXISTS traffic_calming_points;
 DROP TABLE IF EXISTS buffer_area_highway;
-DROP TABLE IF EXISTS obstacle_poly;
+DROP TABLE IF EXISTS buffer_obstacle_poly;
 DROP TABLE IF EXISTS obstacle_point;
 
 CREATE TABLE amenity_parking_points AS SELECT * FROM import.amenity_parking_points;
@@ -27,7 +27,7 @@ CREATE TABLE ramps AS SELECT * FROM import.ramps;
 CREATE TABLE service AS SELECT * FROM import.service;
 CREATE TABLE traffic_calming_points AS SELECT * FROM import.traffic_calming_points;
 CREATE TABLE buffer_area_highway AS SELECT * FROM import.area_highway;
-CREATE TABLE obstacle_poly AS SELECT * FROM import.obstacle_poly;
+CREATE TABLE buffer_obstacle_poly AS SELECT * FROM import.obstacle_poly;
 CREATE TABLE obstacle_point AS SELECT * FROM import.obstacle_point;
 
 -- insert highway=service into highways table when there are parking information
@@ -58,7 +58,7 @@ CREATE UNIQUE INDEX ON amenity_parking_points (id);
 CREATE UNIQUE INDEX ON traffic_calming_points (id);
 CREATE UNIQUE INDEX ON boundaries (id);
 CREATE UNIQUE INDEX ON buffer_area_highway (id);
-CREATE UNIQUE INDEX ON obstacle_poly (id);
+CREATE UNIQUE INDEX ON buffer_obstacle_poly (id);
 CREATE UNIQUE INDEX ON obstacle_point (id);
 
 --transform to local SRS , we can use meters instead of degree for calculations
@@ -96,14 +96,14 @@ CREATE INDEX obstacle_point_geog_buffer_idx ON obstacle_point USING gist (geog_b
 DROP INDEX IF EXISTS obstacle_point_geom_buffer_idx;
 CREATE INDEX obstacle_point_geom_buffer_idx ON obstacle_point USING gist (geom_buffer);
 
-ALTER TABLE obstacle_poly ADD COLUMN IF NOT EXISTS geog_buffer geography;
-UPDATE obstacle_poly SET geog_buffer = ST_Buffer(geom::geography, buffer, 'endcap=flat');
-ALTER TABLE obstacle_poly ADD COLUMN IF NOT EXISTS geom_buffer geography;
-UPDATE obstacle_poly SET geom_buffer = (ST_Buffer(geom::geography, buffer, 'endcap=flat'))::geometry(Polygon, 4326);
-DROP INDEX IF EXISTS obstacle_poly_geog_buffer_idx;
-CREATE INDEX obstacle_poly_geog_buffer_idx ON obstacle_poly USING gist (geog_buffer);
-DROP INDEX IF EXISTS obstacle_poly_geom_buffer_idx;
-CREATE INDEX obstacle_poly_geom_buffer_idx ON obstacle_poly USING gist (geom_buffer);
+ALTER TABLE buffer_obstacle_poly ADD COLUMN IF NOT EXISTS geog geography;
+UPDATE buffer_obstacle_poly SET geog = ST_Buffer(geom::geography, buffer, 'endcap=flat');
+ALTER TABLE buffer_obstacle_poly ADD COLUMN IF NOT EXISTS geom geography;
+UPDATE buffer_obstacle_poly SET geom = (ST_Buffer(geom::geography, buffer, 'endcap=flat'))::geometry(Polygon, 4326);
+DROP INDEX IF EXISTS buffer_obstacle_poly_geog_idx;
+CREATE INDEX buffer_obstacle_poly_geog_idx ON buffer_obstacle_poly USING gist (geog);
+DROP INDEX IF EXISTS buffer_obstacle_poly_geom_idx;
+CREATE INDEX buffer_obstacle_poly_geom_idx ON buffer_obstacle_poly USING gist (geom);
 
 -- ALTER TABLE trees ADD COLUMN IF NOT EXISTS geog geography(Point, 4326);
 -- UPDATE trees SET geog = geom::geography;
@@ -125,15 +125,10 @@ UPDATE parking_poly SET geog = geom::geography;
 DROP INDEX IF EXISTS parking_poly_geog_idx;
 CREATE INDEX parking_poly_geog_idx ON parking_poly USING gist (geog);
 
-
 ALTER TABLE buffer_area_highway ADD COLUMN IF NOT EXISTS geog geography(Polygon, 4326);
-UPDATE buffer_area_highway SET geog = geom::geography;
-ALTER TABLE buffer_area_highway ADD COLUMN IF NOT EXISTS geog_buffer geography;
-UPDATE buffer_area_highway SET geog_buffer = ST_Buffer(geog, 2, 'join=bevel');
+UPDATE buffer_area_highway SET geog = ST_Buffer(geog, 2, 'join=bevel');
 DROP INDEX IF EXISTS buffer_area_highway_geog_idx;
 CREATE INDEX buffer_area_highway_geog_idx ON buffer_area_highway USING gist (geog);
-DROP INDEX IF EXISTS buffer_area_highway_geog_buffer_idx;
-CREATE INDEX buffer_area_highway_geog_buffer_idx ON buffer_area_highway USING gist (geog_buffer);
 
 DROP TABLE IF EXISTS parking_poly_label;
 CREATE TABLE parking_poly_label AS
@@ -942,6 +937,20 @@ CREATE INDEX buffer_pt_tram_geog_idx ON buffer_pt_tram USING gist (geog);
 DROP INDEX IF EXISTS buffer_pt_tram_geom_idx;
 CREATE INDEX buffer_pt_tram_geom_idx ON buffer_pt_tram USING gist (geom_buffer);
 
+DROP TABLE IF EXISTS buffer_obstacle_point;
+CREATE TABLE buffer_obstacle_point AS
+SELECT
+  p.id,
+  ST_Multi(ST_Union((ST_Buffer((st_closestpoint(p.geom, o.geom))::geography, o.buffer))::geometry))::geography geog
+FROM
+  parking_lanes p JOIN obstacle_point o ON ST_Intersects(p.geog, ST_Buffer(o.geom::geography, 5))
+GROUP BY
+  p.id
+;
+DROP INDEX IF EXISTS buffer_obstacle_point_geog_idx;
+CREATE INDEX buffer_obstacle_point_geog_idx ON buffer_obstacle_point USING gist (geog);
+
+
 
 DROP TABLE IF EXISTS parking_lanes_single;
 CREATE TABLE parking_lanes_single AS
@@ -1327,11 +1336,11 @@ SELECT
                        ST_Difference(
                          ST_Difference(
                           p.geog::geometry,
-                          ST_SetSRID(COALESCE(ob_poly.geog_buffer, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
+                          ST_SetSRID(COALESCE(ob_poly.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
                             ),
-                        ST_SetSRID(COALESCE(ob_point.geog_buffer, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
+                        ST_SetSRID(COALESCE(ob_point.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
                           ),
-                      ST_SetSRID(COALESCE(ah.geog_buffer, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
+                      ST_SetSRID(COALESCE(ah.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
                         ),
                       ST_SetSRID(COALESCE(bapp.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
                     ),
@@ -1372,9 +1381,9 @@ FROM
   LEFT JOIN buffer_highways hb ON p.id = hb.id
   LEFT JOIN buffer_amenity_parking_points bc ON p.id = bc.id
   LEFT JOIN buffer_amenity_parking_poly bapp on ST_Intersects(p.geog, bapp.geog)
-  LEFT JOIN buffer_area_highway ah on ST_Intersects(p.geog, ah.geog_buffer)
-  LEFT JOIN obstacle_poly ob_poly on ST_Intersects(p.geog, ob_poly.geog_buffer)
-  LEFT JOIN obstacle_point ob_point on ST_Intersects(p.geog, ob_point.geog_buffer)
+  LEFT JOIN buffer_area_highway ah on ST_Intersects(p.geog, ah.geog)
+  LEFT JOIN buffer_obstacle_poly ob_poly on ST_Intersects(p.geog, ob_poly.geog)
+  LEFT JOIN buffer_obstacle_point ob_point on ST_Intersects(p.geog, ob_point.geog)
 ORDER BY
   p.id
 ;
@@ -1433,8 +1442,8 @@ SELECT
         END
     END capacity,
     CASE
-      WHEN single."source:capacity" IS NOT NULL AND single.capacity <> 0 THEN single."source:capacity"
-      WHEN single."source:capacity" IS NULL OR single.capacity = 0 THEN 'estimated'
+      WHEN single.capacity IS NOT NULL AND single.capacity <> 0 THEN single."source:capacity"
+      WHEN single.capacity IS NULL OR single.capacity = 0 THEN 'estimated'
     END "source:capacity",
     single.width width,
     single."offset" "offset",
