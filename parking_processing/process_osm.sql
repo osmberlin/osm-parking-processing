@@ -1474,7 +1474,7 @@ SELECT
 	CASE
 		WHEN position IN ('separate') THEN 'not_processed_yet'
 		WHEN position IN ('no') THEN 'no_parking'
-		WHEN position NOT IN ('no','separate') AND capacity IS NULL THEN 'segment_to_small'
+		WHEN position NOT IN ('no','separate') AND capacity IS NULL THEN 'segment_too_small'
 		WHEN capacity IS NULL THEN 'data_missing'
 		ELSE 'other'
 	END capacity_status,
