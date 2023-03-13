@@ -2,7 +2,8 @@ FROM debian:sid-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
-    postgresql-client-15
+    postgresql-client-15 \
+    gdal-bin
 
 # clean up
 RUN rm -rf /var/lib/apt/lists/*
