@@ -1350,17 +1350,17 @@ SELECT
       ST_SetSRID(COALESCE(k.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
     ),
     ST_SetSRID(COALESCE(hb.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
-  )::geography geog_diff,
-  d.geog driveway_geog,
-  c.geog ped_crossing_geog,
-  k.geog kerbs_geog,
-  hb.geog highways_buffer_geog,
-  r.geog ramps_geog,
-  b.geog bus_geog,
-  t.geog tram_geog,
-  bc.geog bike_geog,
-  bapp.geog pp_geog,
-  ah.geog_buffer area_highway_geog
+  )::geography geog_diff
+--   d.geog driveway_geog,
+--   c.geog ped_crossing_geog,
+--   k.geog kerbs_geog,
+--   hb.geog highways_buffer_geog,
+--   r.geog ramps_geog,
+--   b.geog bus_geog,
+--   t.geog tram_geog,
+--   bc.geog bike_geog,
+--   bapp.geog pp_geog,
+--   ah.geog_buffer area_highway_geog
 FROM
   parking_lanes p
   LEFT JOIN buffer_driveways d ON p.id = d.id
