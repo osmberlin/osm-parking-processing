@@ -91,11 +91,19 @@ ALTER TABLE obstacle_point ADD COLUMN IF NOT EXISTS geog_buffer geography;
 UPDATE obstacle_point SET geog_buffer = ST_Buffer(geom::geography, buffer);
 ALTER TABLE obstacle_point ADD COLUMN IF NOT EXISTS geom_buffer geography;
 UPDATE obstacle_point SET geom_buffer = (ST_Buffer(geom::geography, buffer))::geometry(Polygon, 4326);
+DROP INDEX IF EXISTS obstacle_point_geog_buffer_idx;
+CREATE INDEX obstacle_point_geog_buffer_idx ON obstacle_point USING gist (geog_buffer);
+DROP INDEX IF EXISTS obstacle_point_geom_buffer_idx;
+CREATE INDEX obstacle_point_geom_buffer_idx ON obstacle_point USING gist (geom_buffer);
 
 ALTER TABLE obstacle_poly ADD COLUMN IF NOT EXISTS geog_buffer geography;
 UPDATE obstacle_poly SET geog_buffer = ST_Buffer(geom::geography, buffer, 'endcap=flat');
 ALTER TABLE obstacle_poly ADD COLUMN IF NOT EXISTS geom_buffer geography;
 UPDATE obstacle_poly SET geom_buffer = (ST_Buffer(geom::geography, buffer, 'endcap=flat'))::geometry(Polygon, 4326);
+DROP INDEX IF EXISTS obstacle_poly_geog_buffer_idx;
+CREATE INDEX obstacle_poly_geog_buffer_idx ON obstacle_poly USING gist (geog_buffer);
+DROP INDEX IF EXISTS obstacle_poly_geom_buffer_idx;
+CREATE INDEX obstacle_poly_geom_buffer_idx ON obstacle_poly USING gist (geom_buffer);
 
 -- ALTER TABLE trees ADD COLUMN IF NOT EXISTS geog geography(Point, 4326);
 -- UPDATE trees SET geog = geom::geography;
