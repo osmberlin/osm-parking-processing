@@ -2,33 +2,33 @@ SET SEARCH_PATH TO processing, public;
 
 DROP TABLE IF EXISTS amenity_parking_points;
 DROP TABLE IF EXISTS boundaries;
+DROP TABLE IF EXISTS buffer_area_highway;
+DROP TABLE IF EXISTS buffer_obstacle_poly;
 DROP TABLE IF EXISTS crossings;
 DROP TABLE IF EXISTS footways;
 DROP TABLE IF EXISTS highways;
+DROP TABLE IF EXISTS obstacle_point;
 DROP TABLE IF EXISTS parking_poly;
 DROP TABLE IF EXISTS pt_platform;
 DROP TABLE IF EXISTS pt_stops;
 DROP TABLE IF EXISTS ramps;
 DROP TABLE IF EXISTS service;
 DROP TABLE IF EXISTS traffic_calming_points;
-DROP TABLE IF EXISTS buffer_area_highway;
-DROP TABLE IF EXISTS buffer_obstacle_poly;
-DROP TABLE IF EXISTS obstacle_point;
 
 CREATE TABLE amenity_parking_points AS SELECT * FROM import.amenity_parking_points;
 CREATE TABLE boundaries AS SELECT * FROM import.boundaries;
+CREATE TABLE buffer_area_highway AS SELECT * FROM import.area_highway;
+CREATE TABLE buffer_obstacle_poly AS SELECT * FROM import.obstacle_poly;
 CREATE TABLE crossings AS SELECT * FROM import.crossings;
 CREATE TABLE footways AS SELECT * FROM import.footways;
 CREATE TABLE highways AS SELECT * FROM import.highways;
+CREATE TABLE obstacle_point AS SELECT * FROM import.obstacle_point;
 CREATE TABLE parking_poly AS SELECT * FROM import.parking_poly;
 CREATE TABLE pt_platform AS SELECT * FROM import.pt_platform;
 CREATE TABLE pt_stops AS SELECT * FROM import.pt_stops;
 CREATE TABLE ramps AS SELECT * FROM import.ramps;
 CREATE TABLE service AS SELECT * FROM import.service;
 CREATE TABLE traffic_calming_points AS SELECT * FROM import.traffic_calming_points;
-CREATE TABLE buffer_area_highway AS SELECT * FROM import.area_highway;
-CREATE TABLE buffer_obstacle_poly AS SELECT * FROM import.obstacle_poly;
-CREATE TABLE obstacle_point AS SELECT * FROM import.obstacle_point;
 
 -- insert highway=service into highways table when there are parking information
 INSERT INTO highways
@@ -46,20 +46,20 @@ WHERE
 
 ALTER TABLE highways DROP COLUMN id;
 ALTER TABLE highways ADD COLUMN id SERIAL PRIMARY KEY;
-CREATE UNIQUE INDEX ON highways (id);
 
-CREATE UNIQUE INDEX ON service (id);
-CREATE UNIQUE INDEX ON footways (id);
-CREATE UNIQUE INDEX ON parking_poly (id);
-CREATE UNIQUE INDEX ON crossings (id);
-CREATE UNIQUE INDEX ON pt_stops (id);
-CREATE UNIQUE INDEX ON ramps (id);
 CREATE UNIQUE INDEX ON amenity_parking_points (id);
-CREATE UNIQUE INDEX ON traffic_calming_points (id);
 CREATE UNIQUE INDEX ON boundaries (id);
 CREATE UNIQUE INDEX ON buffer_area_highway (id);
 CREATE UNIQUE INDEX ON buffer_obstacle_poly (id);
+CREATE UNIQUE INDEX ON crossings (id);
+CREATE UNIQUE INDEX ON footways (id);
+CREATE UNIQUE INDEX ON highways (id);
 CREATE UNIQUE INDEX ON obstacle_point (id);
+CREATE UNIQUE INDEX ON parking_poly (id);
+CREATE UNIQUE INDEX ON pt_stops (id);
+CREATE UNIQUE INDEX ON ramps (id);
+CREATE UNIQUE INDEX ON service (id);
+CREATE UNIQUE INDEX ON traffic_calming_points (id);
 
 --transform to local SRS , we can use meters instead of degree for calculations
 --TODO check if all ST_* functions used are fine with geography type -> change to geography type
@@ -74,7 +74,7 @@ DROP INDEX IF EXISTS highways_geog_idx;
 CREATE INDEX highways_geog_idx ON highways USING gist (geog);
 
 ALTER TABLE highways ADD COLUMN IF NOT EXISTS geog_buffer geography;
-UPDATE highways SET geog_buffer = ST_Buffer(geog, ((parking_width_proc / 2) - 0.5), 'endcap=flat');
+UPDATE highways SET geog_buffer = ST_Buffer(geog, ((parking_width_proc_effective / 2) - 0.5), 'endcap=flat');
 ALTER TABLE highways ADD COLUMN IF NOT EXISTS geog_buffer_left geography;
 UPDATE highways SET geog_buffer_left = ST_Buffer(geog, ((parking_width_proc / 2) + 2), 'side=left endcap=flat');
 ALTER TABLE highways ADD COLUMN IF NOT EXISTS geog_buffer_right geography;

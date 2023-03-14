@@ -120,6 +120,7 @@ The important tables are
 | parking_lanes | representing the OSM highway line with a offset               |
 | parking_spaces | calculated points representing a parking spot                 |
 
+They have these attributes:
 
 | parking_segments | paking_lanes | parking_spaces |
 | --- | --- | --- |
@@ -145,8 +146,10 @@ The important tables are
 | capacity_status | | |
 | error_output | error_output | error_output |
 
+Each of them is exported as Geopackage file and pushed to `parking_processing/export/{region_name}/dataset_name_{region_name}.gpkg`.
+
 For each imported region statistics per administrative boundary are generated and exported as `geojson` file to the 
-directory `parking_processing/export/region_{region_name}.geojson`. the `{region_name}` gets extracted from the 
+directory `parking_processing/export/{region_name}/region_{region_name}.geojson`. the `{region_name}` gets extracted from the 
 boundary import files you copy to the `data` directory.
 
 ## Prototype fund
