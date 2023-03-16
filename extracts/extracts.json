@@ -81,6 +81,15 @@
                 "file_name": "boundaries/saarbruecken.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "hamburg.osm.pbf",
+            "output_format": "pbf",
+            "description": "Hamburg ohne Nordseegebiet, r/62782 ",
+            "polygon": {
+                "file_name": "boundaries/hamburg.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
