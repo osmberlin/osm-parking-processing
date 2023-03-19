@@ -90,6 +90,15 @@
                 "file_name": "boundaries/hamburg.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "dortmund.osm.pbf",
+            "output_format": "pbf",
+            "description": "Dortmund, r/1829065 ",
+            "polygon": {
+                "file_name": "boundaries/dortmund.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
