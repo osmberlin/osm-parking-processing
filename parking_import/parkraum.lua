@@ -604,7 +604,7 @@ function osm2pgsql.process_way(object)
             capacity = parse_units(object.tags["capacity"]),
             building = object.tags["building"],
             parking = object.tags["parking"],
-            parking_orientation = object.tags["parking:orientation"],
+            parking_orientation = object.tags["orientation"],
             area = geom:transform(3857):area(),
             geom = geom
         })
@@ -1203,7 +1203,7 @@ function osm2pgsql.process_relation(object)
             building = object.tags["building"],
             parking = object.tags["parking"],
             operator_type = object.tags["operator:type"],
-            parking_orientation = object.tags["parking:orientation"],
+            parking_orientation = object.tags["orientation"],
             area = geom:transform(3857):area(),
             geom = geom
         })
