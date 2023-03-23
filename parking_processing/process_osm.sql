@@ -32,9 +32,9 @@ CREATE TABLE traffic_calming_points AS SELECT * FROM import.traffic_calming_poin
 
 -- insert highway=service into highways table when there are parking information
 INSERT INTO highways
-  (osm_type, osm_id, id, type, geom, surface, name, oneway, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective)
+  (osm_type, osm_id, id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective)
 SELECT
-  osm_type, osm_id, id, type, geom, surface, name, oneway, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective
+  osm_type, osm_id, id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective
 FROM
   service
 WHERE
