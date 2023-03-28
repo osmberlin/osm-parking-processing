@@ -1471,7 +1471,6 @@ CREATE UNIQUE INDEX ON pl_dev_geog (id);
 DROP TABLE IF EXISTS parking_segments;
 CREATE TABLE parking_segments AS
 SELECT
-    id,
     osm_type,
     osm_id,
     side,
@@ -1505,6 +1504,7 @@ FROM pl_dev_geog
 WHERE
   ST_Length(geog) > 1.7
 ;
+ALTER TABLE parking_segments ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON parking_segments (id);
 DROP INDEX IF EXISTS parking_segments_geom_idx;
 CREATE INDEX parking_segments_geom_idx ON parking_segments USING gist (geom);
@@ -1536,7 +1536,30 @@ SELECT
     "length",
     length_per_capacity,
     degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857)))) -90  angle,
-    (ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326) geom
+    CASE
+      WHEN side = 'left' THEN
+        ST_Transform(
+          ST_SetSRID(
+            ST_MakePoint(
+              ST_X(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (-12 * cos(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857)))))),
+              ST_Y(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (12 * sin(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857))))))
+            ),
+            3857
+          ),
+          4326
+      )
+      WHEN side = 'right' THEN
+        ST_Transform(
+          ST_SetSRID(
+            ST_MakePoint(
+              ST_X(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (12 * cos(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857)))))),
+              ST_Y(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (-12 * sin(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857))))))
+            ),
+            3857
+          ),
+          4326
+      )
+	  END geom
 FROM parking_segments
 ;
 CREATE UNIQUE INDEX ON parking_segments_label (id);
