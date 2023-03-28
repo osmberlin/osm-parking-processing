@@ -1541,8 +1541,8 @@ SELECT
         ST_Transform(
           ST_SetSRID(
             ST_MakePoint(
-              ST_X(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (-12 * cos(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857)))))),
-              ST_Y(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (12 * sin(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857))))))
+              ST_X(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (-6 * cosd(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857)))))),
+              ST_Y(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (6 * sind(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857))))))
             ),
             3857
           ),
@@ -1552,8 +1552,8 @@ SELECT
         ST_Transform(
           ST_SetSRID(
             ST_MakePoint(
-              ST_X(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (12 * cos(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857)))))),
-              ST_Y(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (-12 * sin(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857))))))
+              ST_X(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (6 * cosd(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857)))))),
+              ST_Y(ST_Transform((ST_LineInterpolatePoint(geom, 0.5))::geometry(Point, 4326), 3857)) + (-6 * sind(degrees(ST_Azimuth(ST_StartPoint(ST_Transform(geom, 3857)), ST_EndPoint(ST_Transform(geom, 3857))))))
             ),
             3857
           ),
