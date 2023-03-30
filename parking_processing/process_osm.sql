@@ -1563,6 +1563,7 @@ SELECT
 FROM parking_segments
 ;
 CREATE UNIQUE INDEX ON parking_segments_label (id);
+ALTER TABLE parking_segments_label ALTER COLUMN geom TYPE geometry(Point, 4326) USING ST_Transform(geom, 4326);
 DROP INDEX IF EXISTS parking_segments_label_geom_idx;
 CREATE INDEX parking_segments_label_geom_idx ON parking_segments_label USING gist (geom);
 
