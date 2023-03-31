@@ -1561,26 +1561,14 @@ SELECT
       )
 	  END geom
 FROM parking_segments
+WHERE
+  capacity IS NOT NULL
 ;
 CREATE UNIQUE INDEX ON parking_segments_label (id);
 ALTER TABLE parking_segments_label ALTER COLUMN geom TYPE geometry(Point, 4326) USING ST_Transform(geom, 4326);
 DROP INDEX IF EXISTS parking_segments_label_geom_idx;
 CREATE INDEX parking_segments_label_geom_idx ON parking_segments_label USING gist (geom);
 
-
-DROP TABLE IF EXISTS parking_segments_nn;
-CREATE TABLE parking_segments_nn AS
-SELECT
-    *
-FROM parking_segments
-WHERE
-  capacity IS NOT NULL
-;
-CREATE UNIQUE INDEX ON parking_segments_nn (id);
-DROP INDEX IF EXISTS parking_segments_nn_geom_idx;
-CREATE INDEX parking_segments_nn_geom_idx ON parking_segments_nn USING gist (geom);
-DROP INDEX IF EXISTS parking_segments_nn_geog_idx;
-CREATE INDEX parking_segments_nn_geog_idx ON parking_segments_nn USING gist (geog);
 
 DROP TABLE IF EXISTS parking_spaces;
 CREATE TABLE parking_spaces AS
