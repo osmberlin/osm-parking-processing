@@ -101,6 +101,7 @@ tables.parking_poly = osm2pgsql.define_table({
         { column = 'capacity', sql_type = 'numeric' },
         { column = 'parking', type = 'text' },
         { column = 'building', type = 'text' },
+        { column = 'surface', type = 'text' },
         { column = 'operator_type', type = 'text' },
         { column = 'parking_orientation', type = 'text' },
         { column = 'area', type = 'real' },
@@ -244,6 +245,7 @@ tables.amenity_parking_points = osm2pgsql.define_table({
         { column = 'bicycle', type = 'text' },
         { column = 'small_electric_vehicle', sql_type = 'text' },
         { column = 'small_vehicle_parking_position', type = 'text' },
+        { column = 'operator_type', type = 'text' },
         { column = 'parking', type = 'text' },
         { column = 'parking_position', type = 'text' },
         { column = 'geom', type = 'point' , projection = srid, not_null = true}
@@ -258,6 +260,7 @@ tables.traffic_calming_points = osm2pgsql.define_table({
         { column = 'id', sql_type = 'serial', create_only = true },
         { column = 'traffic_calming', type = 'text' },
         { column = 'priority', type = 'text' },
+        { column = 'direction', type = 'text' },
         { column = 'geom', type = 'point' , projection = srid, not_null = true}
     }
 })
@@ -497,6 +500,13 @@ function obstacle_buffer(object)
 
 end
 
+function is_number(input)
+    if tonumber(input) ~= nil then
+        return true
+    end
+    return false
+end
+
 function parse_units(input)
     -- from parking_import/flex-config/data-types.lua
     if not input then
@@ -578,8 +588,7 @@ function osm2pgsql.process_way(object)
     end
 
     -- process public transport objects and push them to db table
-    local public_transport = object.tags["public_transport"]
-    if public_transport == "platform"
+    if object.tags["public_transport"] == "platform"
     then
         tables.pt_platform:insert({
             name = object.tags["name"],
@@ -595,30 +604,15 @@ function osm2pgsql.process_way(object)
     -- process parking objects and push them to db table
     local p_amenity = object.tags["amenity"]
     local p_leisure = object.tags["leisure"]
-    if object.is_closed and p_amenity == "parking"
-    then
-        local geom = object:as_polygon()
-        tables.parking_poly:insert({
-            amenity = p_amenity,
-            access = object.tags["access"],
-            capacity = parse_units(object.tags["capacity"]),
-            building = object.tags["building"],
-            parking = object.tags["parking"],
-            parking_orientation = object.tags["orientation"],
-            area = geom:transform(3857):area(),
-            geom = geom
-        })
-        return
-    end
-
-    -- process bicycle_parking objects and push them to db table
     if object.is_closed and (
-        p_amenity == "bicycle_parking" or
+        p_amenity == "parking" or
         p_leisure == "parklet" or
-        (p_amenity == "bicycle_rental" and rev_amenity_position[object.tags["bicycle_rental:position"]]) or
+        (p_leisure == "outdoor_seating" and "outdoor_seeting" == "parklet") or
+        (p_amenity == "bicycle_parking" and rev_amenity_position[object.tags["bicycle_parking:position"]]) or
         (p_amenity == "motorcycle_parking" and (rev_amenity_position[object.tags["motorcycle_parking:position"]] or rev_amenity_position[object.tags["parking"]])) or
         (p_amenity == "small_electric_vehicle_parking" and rev_amenity_position[object.tags["small_electric_vehicle_parking:position"]]) or
-        (object.tags["bicycle_rental:position"] == 'yes')
+        (p_amenity == "bicycle_rental" and rev_amenity_position[object.tags["bicycle_rental:position"]])
+--        object.tags["traffic_calming"] == "kerb_extension" or
     )
     then
         local geom = object:as_polygon()
@@ -626,7 +620,11 @@ function osm2pgsql.process_way(object)
             amenity = p_amenity,
             access = object.tags["access"],
             capacity = parse_units(object.tags["capacity"]),
-            parking = object.tags["bicycle_parking:position"],
+            parking = object.tags["parking"],
+            building = object.tags["building"],
+            surface = object.tags["surface"],
+            operator_type = object.tags["operator:type"],
+            parking_orientation = object.tags["orientation"],
             area = geom:transform(3857):area(),
             geom = geom
         })
@@ -1150,6 +1148,7 @@ function osm2pgsql.process_node(object)
             small_vehicle_parking_position = object.tags["small_vehicle_parking:position"],
             parking = object.tags["bicycle_parking"],
             parking_position = object.tags["bicycle_parking:position"],
+            operator_type = object.tags["operator:type"],
             geom = object:as_point()
         })
         return
@@ -1167,7 +1166,7 @@ function osm2pgsql.process_node(object)
             leisure = object.tags["leisure"],
             man_made = object.tags["man_made"],
             natural = object.tags["natural"],
-            capacity = object.tags["capacity"],
+            capacity = parse_units(object.tags["capacity"]),
             buffer = obstacle_buffer,
             error_output = object.tags["error_output"],
             geom = object:as_point()
@@ -1178,10 +1177,10 @@ function osm2pgsql.process_node(object)
 
 end
 
-
 function osm2pgsql.process_relation(object)
     if object.tags.type == 'boundary' and
-       object.tags.boundary == "administrative"
+       object.tags.boundary == "administrative" and
+       is_number(object.tags["admin_level"])
     then
         local geom = object:as_multipolygon()
         tables.boundaries:insert{
@@ -1200,8 +1199,9 @@ function osm2pgsql.process_relation(object)
             amenity = p_amenity,
             access = object.tags["access"],
             capacity = parse_units(object.tags["capacity"]),
-            building = object.tags["building"],
             parking = object.tags["parking"],
+            building = object.tags["building"],
+            surface = object.tags["surface"],
             operator_type = object.tags["operator:type"],
             parking_orientation = object.tags["orientation"],
             area = geom:transform(3857):area(),
