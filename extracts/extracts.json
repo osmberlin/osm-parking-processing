@@ -99,6 +99,15 @@
                 "file_name": "boundaries/dortmund.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "bietigheim-bissingen.osm.pbf",
+            "output_format": "pbf",
+            "description": "Bietigheim-Bissingen, r/405807 ",
+            "polygon": {
+                "file_name": "boundaries/bietigheim-bissingen.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
