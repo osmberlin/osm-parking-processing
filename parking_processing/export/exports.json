@@ -1,0 +1,269 @@
+{
+  "regions": {
+    "region": [
+      {
+        "name": "berlin",
+        "label": "Berlin",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "bremen",
+        "label": "Bremen",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "dortmund",
+        "label": "Dortmund",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "hannover",
+        "label": "Hannover",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "hamburg",
+        "label": "Hamburg",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "bamberg",
+        "label": "Bamberg",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "kiel",
+        "label": "Kiel",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "bonn",
+        "label": "Bonn",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      },
+      {
+        "name": "bietigheim-bissingen",
+        "label": "Bietigheim-Bissingen",
+        "lastUpdate": "09.05.2023",
+        "point": "",
+        "borderURL": "",
+        "exports": [
+          {
+            "name": "parking_lanes",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_spaces",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "parking_segments",
+            "file_type": "gpkg",
+            "lastUpdate": "09.05.2023"
+          },
+          {
+            "name": "summary",
+            "file_type": "geojson",
+            "lastUpdate": "09.05.2023"
+          }
+        ]
+      }
+    ]
+  },
+  "export_url_prefix": "https://vts.mapwebbing.eu/export/",
+  "license": "These data sets are made available under the Open Database License: http://opendatacommons.org/licenses/odbl/1.0/. Any rights in individual contents of the database are licensed under the Database Contents License: http://opendatacommons.org/licenses/dbcl/1.0/"
+}
