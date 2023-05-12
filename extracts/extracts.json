@@ -101,11 +101,11 @@
             }
         },
         {
-            "output": "bietigheim-bissingen.osm.pbf",
+            "output": "bietigheim_bissingen.osm.pbf",
             "output_format": "pbf",
             "description": "Bietigheim-Bissingen, r/405807 ",
             "polygon": {
-                "file_name": "boundaries/bietigheim-bissingen.geojson",
+                "file_name": "boundaries/bietigheim_bissingen.geojson",
                 "file_type": "geojson"
             }
         }
