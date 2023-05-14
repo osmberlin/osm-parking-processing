@@ -108,6 +108,15 @@
                 "file_name": "boundaries/bietigheim_bissingen.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "braunschweig.osm.pbf",
+            "output_format": "pbf",
+            "description": "Braunschweig, r/62531 ",
+            "polygon": {
+                "file_name": "boundaries/braunschweig.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
