@@ -20,7 +20,7 @@ EOF
 exit 1
 fi
 
-export PGSERVICE=${PG_SERVICE}
+export PGSERVICE=${PGSERVICE}
 
 SCHEMAOK=$(psql -t -c "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = '${PG_SCHEMA_META}' AND tablename = 'spatialfilter');")
 

@@ -22,11 +22,16 @@ parser.add_argument(
 # parse arguments
 args = parser.parse_args()
 
-# Get the service name from the PG_SERVICE environment variable
-pg_service_name = os.environ.get("PG_SERVICE")
+# Get the service name from the PGSERVICE environment variable
+pg_service_name = os.environ.get("PGSERVICE")
+
+# Check if PGSERVICE environment variable is set
+if not pg_service_name:
+    print('Error: PGSERVICE environment variable not set')
+    exit()
 
 # Connect to Postgres
-engine = sa.create_engine(f"postgresql+psycopg2://:@/")
+engine = sa.create_engine(f"postgresql+psycopg2:///?service={pg_service_name}")
 
 # TODO use explicit column names or catch all
 # define query

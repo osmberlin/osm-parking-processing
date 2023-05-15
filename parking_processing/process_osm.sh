@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PGSERVICE=${PG_SERVICE}
+export PGSERVICE=${PGSERVICE}
 
 function processosm () {
     echo "run process"
@@ -20,7 +20,7 @@ function processosm () {
     psql -f /config/add_comments_timestamp.sql
     psql -f /config/db_functions_post.sql
     bash /config/export_regions.sh
-
+    echo "done processing"
 }
 
 while : ; do

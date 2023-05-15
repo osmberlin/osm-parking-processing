@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PGSERVICE=${PG_SERVICE}
+export PGSERVICE=${PGSERVICE}
 
 # TODO check hardcoded schema name
 REGIONS=`psql -t -c "SELECT name FROM meta.spatialfilter;"`

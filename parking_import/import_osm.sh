@@ -17,12 +17,12 @@ PG_SCHEMA_IMPORT=${PG_SCHEMA_IMPORT}
 PG_SCHEMA_META=${PG_SCHEMA_META}
 PG_SCHEMA_MIDDLE=${PG_SCHEMA_MIDDLE}
 PG_OSM2PGSQL_DIFFSIZE=${PG_OSM2PGSQL_DIFFSIZE}
-PGSERVICE=${PG_SERVICE}
+PGSERVICE=${PGSERVICE}
 EOF
 exit 1
 fi
 
-export PGSERVICE=${PG_SERVICE}
+export PGSERVICE=${PGSERVICE}
 
 O2P_DIRECTORY=/usr/local/bin/
 
@@ -127,14 +127,14 @@ function import_spatialfilter () {
         if [ ! "${PG_TABLE_SPATIALFILTER_EXISTS}" = "t" ]
         then
             echo "create spatial filter table"
-            #echo ogr2ogr -lco GEOMETRY_NAME=geom -lco SCHEMA="${PG_SCHEMA_META}" -nlt PROMOTE_TO_MULTI -nln spatialfilter -sql "SELECT '${LAYERNAME}' AS name FROM ${LAYERNAME}" -f "PostgreSQL" PG:service="${PG_SERVICE}" "${GEOJSONFILE}"
+            #echo ogr2ogr -lco GEOMETRY_NAME=geom -lco SCHEMA="${PG_SCHEMA_META}" -nlt PROMOTE_TO_MULTI -nln spatialfilter -sql "SELECT '${LAYERNAME}' AS name FROM ${LAYERNAME}" -f "PostgreSQL" PG:service="${PGSERVICE}" "${GEOJSONFILE}"
             ogr2ogr \
               -lco GEOMETRY_NAME=geom \
               -lco SCHEMA="${PG_SCHEMA_META}" \
               -nlt PROMOTE_TO_MULTI \
               -nln spatialfilter \
               -sql "SELECT '${LAYERNAME}' AS name FROM ${LAYERNAME}" \
-              -f "PostgreSQL" PG:service="${PG_SERVICE}" \
+              -f "PostgreSQL" PG:service="${PGSERVICE}" \
               "${GEOJSONFILE}"
             rm "${GEOJSONFILE}"
         else
@@ -144,7 +144,7 @@ function import_spatialfilter () {
               -append \
               -sql "SELECT '${LAYERNAME}' AS name FROM ${LAYERNAME}" \
               -nln "${PG_SCHEMA_META}".spatialfilter \
-              -f "PostgreSQL" PG:service="${PG_SERVICE}" \
+              -f "PostgreSQL" PG:service="${PGSERVICE}" \
               "${GEOJSONFILE}"
             rm "${GEOJSONFILE}"
         fi
