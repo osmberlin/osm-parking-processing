@@ -559,37 +559,8 @@ SELECT
           a.parking_right_offset
         ), 4326
       )::geography
-  END geog,
---  CASE
---     -- before offsetting we cut out all separated parking lanes
---     WHEN v.side IN ('left') THEN
---       ST_Transform(
---         ST_OffsetCurve(
---           ST_Transform(
---             ST_Difference(
---               a.geog::geometry,
---               ST_SetSRID(COALESCE(ST_Buffer(s.geog, 0.2, 'endcap=flat'), 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
---             ),
---             25833
---           ),
---           a.parking_left_offset
---         ), 4326
---       )::geography
---     WHEN v.side IN ('right') THEN
---       ST_Transform(
---         ST_OffsetCurve(
---           ST_Transform(
---             ST_Difference(
---               a.geog::geometry,
---               ST_SetSRID(COALESCE(ST_Buffer(s.geog, 0.2, 'endcap=flat'), 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
---             ),
---             25833
---           ),
---           a.parking_right_offset
---         ), 4326
---       )::geography
---   END geog_shorten,
-  (a.error_output#>>'{}')::jsonb error_output
+  END geog
+  --(a.error_output#>>'{}')::jsonb error_output
 FROM
   (VALUES ('left'), ('right')) AS v(side)
   CROSS JOIN
@@ -980,7 +951,7 @@ SELECT
     "source:capacity",
     width,
     "offset",
-    error_output,
+    --error_output,
     (ST_DUMP(pl.geog::geometry)).path,
     ((ST_DUMP(pl.geog::geometry)).geom)::geography geog
 FROM
@@ -1102,7 +1073,7 @@ SELECT
   s.parking_right_width_carriageway,
   s.parking_left_offset,
   s.parking_right_offset,
-  (s.error_output#>>'{}')::jsonb error_output,
+  --(s.error_output#>>'{}')::jsonb error_output,
   ST_Buffer(ST_Intersection(s.geog, h.geog), (h.parking_width_proc / 2) + 5) geog
 FROM service s
   JOIN highways h ON ST_Intersects(s.geog, h.geog)
@@ -1134,7 +1105,7 @@ SELECT
   s.parking_right_width_carriageway,
   s.parking_left_offset,
   s.parking_right_offset,
-  (s.error_output#>>'{}')::jsonb error_output,
+  --(s.error_output#>>'{}')::jsonb error_output,
   ST_Buffer(ST_Intersection(s.geog, p.geog), GREATEST((s.parking_width_proc / 2), 2) ) geog
 FROM service s
   JOIN parking_lanes p ON ST_Intersects(s.geog, p.geog)
@@ -1331,7 +1302,7 @@ SELECT
   p.width width,
   p."offset" "offset",
   p.geog geog,
-  p.error_output,
+  --p.error_output,
   ST_Difference(
     ST_Difference(
       ST_Difference(
@@ -1458,7 +1429,7 @@ SELECT
     single.width width,
     single."offset" "offset",
     single.geog single_geog,
-    single.error_output,
+    --single.error_output,
     single.geog_diff geog_diff,
     (single.simple_geog)::geography geog
 FROM
