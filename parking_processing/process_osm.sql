@@ -675,7 +675,7 @@ SELECT
   "source:capacity",
   width,
   "offset",
-  error_output,
+  --error_output,
   (ST_Multi(ST_Union(geog::geometry)))::geometry(MultiLineString, 4326) geom,
   ST_Union(geog::geometry)::geography geog
 FROM
@@ -697,8 +697,8 @@ GROUP BY
   capacity,
   "source:capacity",
   width,
-  "offset",
-  error_output
+  "offset"
+  --error_output
 ;
 ALTER TABLE parking_lanes ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX parking_lanes_pk_idx ON parking_lanes USING btree (id ASC NULLS LAST);
@@ -1497,7 +1497,7 @@ SELECT
 		WHEN capacity IS NULL THEN 'data_missing'
 		ELSE 'other'
 	END capacity_status,
-    error_output,
+    --error_output,
     geog::geometry(LineString, 4326) geom,
     geog
 FROM pl_dev_geog
@@ -1592,7 +1592,7 @@ WITH multi AS (
       "source:capacity" source_capacity,
       width,
       "offset",
-      error_output,
+      --error_output,
       CASE
         WHEN orientation = 'diagonal' THEN degrees(ST_Azimuth(ST_Startpoint(ST_Transform(geog::geometry, 25832)), ST_EndPoint(ST_Transform(geog::geometry, 25832)))) + 45
         WHEN orientation = 'perpendicular' THEN degrees(ST_Azimuth(ST_Startpoint(ST_Transform(geog::geometry, 25832)), ST_EndPoint(ST_Transform(geog::geometry, 25832)))) + 90
@@ -1624,7 +1624,7 @@ SELECT
       source_capacity,
       width,
       "offset",
-      error_output,
+      --error_output,
       angle,
       ((ST_DUMP(geom)).geom)::geometry(Point, 4326) AS geom
 FROM
