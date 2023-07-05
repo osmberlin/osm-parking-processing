@@ -117,6 +117,15 @@
                 "file_name": "boundaries/braunschweig.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "oldenburg.osm.pbf",
+            "output_format": "pbf",
+            "description": "Oldenburg, r/62409 ",
+            "polygon": {
+                "file_name": "boundaries/oldenburg.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
