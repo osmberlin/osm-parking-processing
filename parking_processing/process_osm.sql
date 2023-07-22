@@ -1669,8 +1669,6 @@ SELECT
   COALESCE(ROUND((SUM(ST_Length(h.geog)) FILTER (WHERE dual_carriageway IS NULL AND (parking_left_position IN ('street_side') OR parking_right_position IN ('street_side'))))::numeric / 1000, 1), 0) +
   COALESCE(ROUND((SUM(ST_Length(h.geog) / 2) FILTER (WHERE dual_carriageway = true AND (parking_left_position IN ('street_side') OR parking_right_position IN ('street_side'))))::numeric / 1000, 1), 0) AS street_side_km,
 
--- Hallo Welt
-
   COALESCE(ROUND((SUM(ST_Length(h.geog)) FILTER (WHERE dual_carriageway IS NULL AND (parking_left_position IN ('lane') OR parking_right_position IN ('lane'))))::numeric / 1000, 1), 0) +
   COALESCE(ROUND((SUM(ST_Length(h.geog) / 2) FILTER (WHERE dual_carriageway = true AND (parking_left_position IN ('lane') OR parking_right_position IN ('lane'))))::numeric / 1000, 1), 0) AS lane_km,
 
