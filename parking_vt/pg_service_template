@@ -1,6 +1,0 @@
-[osmdb]
-host=parking_db
-port=<dbport>
-dbname=<dbname>
-user=<dbuser>
-password=<dbpassword>
