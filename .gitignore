@@ -1,5 +1,3 @@
-parking_vt/pg_tileserv.env
-parking_processing/.env
-parking_db/.env
-parking_import/.env
+*/**/*.env
+*/**/*.conf
 .DS_Store
