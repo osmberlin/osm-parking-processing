@@ -9,39 +9,8 @@ RUN apt-get update && apt-get install -y \
     osmium-tool \
     postgresql-client-15 \
     pyosmium \
-    python3-psycopg2
-
-RUN apt-get install -y \
-    git \
-    make \
-    cmake \
-    g++ \
-    libboost-dev \
-    libboost-system-dev \
-    libboost-filesystem-dev \
-    libexpat1-dev \
-    zlib1g-dev \
-    libbz2-dev \
-    libpq-dev \
-    libproj-dev \
-    lua5.3 \
-    liblua5.3-dev \
-    pandoc
-
-ENV HOME /root
-ENV OSM2PGSQL_VERSION master
-
-RUN mkdir src &&\
-    cd src &&\
-    git clone --depth 1 --branch ${OSM2PGSQL_VERSION} https://github.com/openstreetmap/osm2pgsql.git &&\
-    cd osm2pgsql &&\
-    mkdir build &&\
-    cd build &&\
-    cmake .. &&\
-    make &&\
-    make install &&\
-    cd /root &&\
-    rm -rf src
+    python3-psycopg2 \
+    osm2pgsql
 
 # clean up
 RUN apt-get remove --yes wget && \
