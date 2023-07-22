@@ -20,7 +20,6 @@ services:
       - ./data:/data
     env_file:
       - parking_import/.env
-    restart: on-failure:5
 
   parking_processing:
     build:
@@ -40,7 +39,6 @@ services:
       - ./data:/data
     env_file:
       - parking_processing/.env
-    restart: on-failure:5
 
   parking_db:
     image: postgis/postgis:15-3.3-alpine
