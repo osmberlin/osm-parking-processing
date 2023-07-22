@@ -31,16 +31,20 @@ This setup makes use of the following software:
 * [Varnish](https://varnish-cache.org/)
 
 ### settings
-- use template files in sub folders (`*_template`) to create a `.env` files by copying/renaming it
-- create spatial filter as geojson file in `data` directory (or copy `extracts/boundaries/berlin.geojson` to filter 
+
+1. use template files in sub folders (`*_template`) to create `.env` and `.conf` files by copying/renaming it
+
+1. create spatial filter as geojson file in `data` directory (or copy `extracts/boundaries/berlin.geojson` to filter
   Berlin) the name of the file will be used as name of this region.
-- download OSM data and put the file in the `osm` folder
+
+1. download OSM data and put the file in the `osm` folder
   ```sh
   wget -q http://download.geofabrik.de/europe/germany/berlin-latest.osm.pbf -O osm/berlin-latest.osm.pbf
   ```
-- you can put multiple pbf files in osm/ directory. They will get merged and imported. This way multiple regions 
-  can be imported. You have to make sure the pbf files contain data from the same timestamp. This setup will try 
-  to update the osm data to the latest changesets before importing it. If you put a month-old file in there, it will 
+
+1. you can put multiple pbf files in osm/ directory. They will get merged and imported. This way multiple regions
+  can be imported. You have to make sure the pbf files contain data from the same timestamp. This setup will try
+  to update the osm data to the latest changesets before importing it. If you put a month-old file in there, it will
   take some time.
 
 If you want to create your own extracts, there is another [readme.md](extracts/readme.md) you can follow.
