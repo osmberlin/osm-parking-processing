@@ -105,6 +105,7 @@ GROUP BY
 ;
 ALTER TABLE buffer_obstacle ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON buffer_obstacle (id);
+ALTER TABLE buffer_obstacle ALTER COLUMN geom TYPE geometry(MultiPolygon, 4326);
 CREATE INDEX buffer_obstacle_geom_idx ON buffer_obstacle USING gist (geom);
 ALTER TABLE buffer_obstacle ADD COLUMN IF NOT EXISTS geog geography(MultiPolygon, 4326);
 UPDATE buffer_obstacle SET geog = geom::geography;
