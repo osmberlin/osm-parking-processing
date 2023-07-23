@@ -72,6 +72,8 @@ DROP INDEX IF EXISTS highways_geom_idx;
 CREATE INDEX highways_geom_idx ON highways USING gist (geom);
 DROP INDEX IF EXISTS highways_geog_idx;
 CREATE INDEX highways_geog_idx ON highways USING gist (geog);
+CREATE INDEX ON highways (osm_id);
+
 
 ALTER TABLE highways ADD COLUMN IF NOT EXISTS geog_buffer geography;
 UPDATE highways SET geog_buffer = ST_Buffer(geog, ((parking_width_proc_effective / 2) - 0.5), 'endcap=flat');
@@ -112,8 +114,9 @@ CREATE INDEX buffer_obstacle_poly_geom_idx ON buffer_obstacle_poly USING gist (g
 -- DROP INDEX IF EXISTS trees_geog_buffer_idx;
 -- CREATE INDEX trees_geog_buffer_idx ON trees USING gist (geog_buffer);
 
+UPDATE boundaries SET geom = ST_Multi(ST_CurveToLine(geom));
 ALTER TABLE boundaries ADD COLUMN IF NOT EXISTS geog geography(MultiPolygon, 4326);
-UPDATE boundaries SET geog = ST_Multi(geom)::geography;
+UPDATE boundaries SET geog =geom::geography;
 ALTER TABLE boundaries ALTER COLUMN geom TYPE geometry(MultiPolygon, 25833) USING ST_Multi(ST_Transform(geom, 25833));
 DROP INDEX IF EXISTS boundaries_geom_idx;
 CREATE INDEX boundaries_geom_idx ON boundaries USING gist (geom);
@@ -238,6 +241,10 @@ ALTER TABLE highway_union ADD COLUMN IF NOT EXISTS geog_buffer_left geography;
 UPDATE highway_union SET geog_buffer_left = ST_Buffer(geog, 8, 'side=left');
 ALTER TABLE highway_union ADD COLUMN IF NOT EXISTS geog_buffer_right geography;
 UPDATE highway_union SET geog_buffer_right = ST_Buffer(geog, 8, 'side=right');
+CREATE INDEX highway_union_geom_idx ON highway_union USING gist (geom);
+ALTER TABLE highway_union ADD COLUMN IF NOT EXISTS geom_25833 geometry;
+UPDATE highway_union SET geom_25833 = ST_Transform(geom, 25833);
+CREATE INDEX highway_union_geom_25833_idx ON highway_union USING gist (geom_25833);
 DROP INDEX IF EXISTS highway_union_geog_idx;
 CREATE INDEX highway_union_geog_idx ON highway_union USING gist (geog);
 DROP INDEX IF EXISTS highway_union_geog_buffer_left_idx;
@@ -272,6 +279,8 @@ UPDATE highway_crossings SET geog_buffer = ST_Buffer(geog, 5);
 DROP INDEX IF EXISTS highway_crossings_geog_buffer_idx;
 CREATE INDEX highway_crossings_geog_buffer_idx ON highway_crossings USING gist (geog_buffer);
 
+ALTER TABLE highway_crossings ADD COLUMN IF NOT EXISTS geom geometry;
+UPDATE highway_crossings SET geom = ST_Transform(geog::geometry, 25833);
 
 -- DROP TABLE IF EXISTS highway_segments;
 -- CREATE TABLE highway_segments AS
