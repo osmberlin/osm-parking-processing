@@ -126,6 +126,8 @@ DROP INDEX IF EXISTS boundaries_geom_idx;
 CREATE INDEX boundaries_geom_idx ON boundaries USING gist (geom);
 DROP INDEX IF EXISTS boundaries_geog_idx;
 CREATE INDEX boundaries_geog_idx ON boundaries USING gist (geog);
+CREATE INDEX ON processing.boundaries (name);
+CREATE INDEX ON processing.boundaries (admin_level);
 
 ALTER TABLE parking_poly ADD COLUMN IF NOT EXISTS geog geography;
 UPDATE parking_poly SET geog = geom::geography;
@@ -1633,15 +1635,13 @@ SELECT
   h.parking_right_capacity,
   h.parking_left_source_capacity,
   h.parking_right_source_capacity,
-  ST_Intersection(h.geom, b.geom) geom,
-  ST_Intersection(h.geog, b.geog) geog
+  ST_Intersection(h.geom, b.geom) geom
 FROM
   boundaries b,
   highways h
 WHERE
   h.geog && b.geog
-  AND b.admin_level IN (4, 9, 10)
-  AND h.type IN ('primary', 'primary_link', 'secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'residential', 'unclassified', 'living_street', 'pedestrian, road')
+  AND h.type NOT IN ('pedestrian')
 ORDER BY
   h.id, b.name, b.admin_level
 ;
@@ -1649,10 +1649,11 @@ DELETE FROM highways_admin WHERE ST_GeometryType(geom) NOT IN ('ST_LineString', 
 ALTER TABLE highways_admin ALTER COLUMN geom TYPE geometry(MultiLinestring, 4326) USING ST_Transform(ST_Multi(geom), 4326);
 ALTER TABLE highways_admin ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON highways_admin (id);
-DROP INDEX IF EXISTS highways_admin_geom_idx;
-CREATE INDEX highways_admin_geom_idx ON highways_admin USING gist (geom);
-DROP INDEX IF EXISTS highways_admin_geog_idx;
+CREATE INDEX ON processing.boundaries (admin_level);
+ALTER TABLE highways_admin ADD COLUMN IF NOT EXISTS geog geography(MultiLineString, 4326);
+UPDATE highways_admin SET geog = geom::geography;
 CREATE INDEX highways_admin_geog_idx ON highways_admin USING gist (geog);
+CREATE INDEX highways_admin_geom_idx ON highways_admin USING gist (geom);
 
 DROP TABLE IF EXISTS boundaries_stats;
 CREATE TABLE boundaries_stats AS
@@ -1691,7 +1692,8 @@ FROM
   boundaries b,
   highways_admin h
 WHERE
-  ST_Intersects(ST_Transform((h.geog)::geometry, 25833), b.geom)
+  ST_Intersects(h.geog, b.geog)
+  AND h.geog && b.geog
   AND h.admin_level = b.admin_level
   AND h.admin_level IN (4, 9, 10)
   AND h.type IN ('primary', 'primary_link', 'secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'residential', 'unclassified', 'living_street', 'pedestrian, road')
