@@ -92,12 +92,12 @@ CREATE INDEX highways_geog_buffer_right_idx ON highways USING gist (geog_buffer_
 DROP TABLE IF EXISTS buffer_obstacle;
 CREATE TABLE buffer_obstacle AS
 SELECT
-	ST_Multi(poly.geom) geom
+	ST_Multi(poly.geom) geom_buffer
 FROM
 	obstacle_poly poly
 UNION ALL
 SELECT
-    ST_Multi(ST_Union((ST_Buffer((st_closestpoint(p.geom, point.geom))::geography, point.buffer))::geometry)) geom
+    ST_Multi(ST_Union((ST_Buffer((st_closestpoint(p.geom, point.geom))::geography, point.buffer))::geometry)) geom_buffer
 FROM
   obstacle_point point LEFT JOIN parking_lanes p ON ST_Intersects(p.geog, ST_Buffer(point.geom::geography, 5))
 GROUP BY
@@ -106,9 +106,9 @@ GROUP BY
 ALTER TABLE buffer_obstacle ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON buffer_obstacle (id);
 ALTER TABLE buffer_obstacle ALTER COLUMN geom TYPE geometry(MultiPolygon, 4326);
-CREATE INDEX buffer_obstacle_geom_idx ON buffer_obstacle USING gist (geom);
+CREATE INDEX buffer_obstacle_geom_idx ON buffer_obstacle USING gist (geom_buffer);
 ALTER TABLE buffer_obstacle ADD COLUMN IF NOT EXISTS geog geography(MultiPolygon, 4326);
-UPDATE buffer_obstacle SET geog = geom::geography;
+UPDATE buffer_obstacle SET geog = geom_buffer::geography;
 CREATE INDEX buffer_obstacle_geog_idx ON buffer_obstacle USING gist (geog);
 
 -- ALTER TABLE trees ADD COLUMN IF NOT EXISTS geog geography(Point, 4326);
