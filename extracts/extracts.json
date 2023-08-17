@@ -126,6 +126,15 @@
                 "file_name": "boundaries/oldenburg.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "wiesbaden.osm.pbf",
+            "output_format": "pbf",
+            "description": "Wiesbaden, r/62496 ",
+            "polygon": {
+                "file_name": "boundaries/wiesbaden.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
