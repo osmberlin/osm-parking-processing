@@ -10,7 +10,11 @@ RUN apt-get update && apt-get install -y \
     postgresql-client-15 \
     pyosmium \
     python3-psycopg2 \
-    osm2pgsql
+    osm2pgsql \
+    exim4-config- \
+    exim4-base- \
+    exim4-daemon-light- \
+    bsd-mailx-
 
 # clean up
 RUN apt-get remove --yes wget && \
