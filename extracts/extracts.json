@@ -135,6 +135,15 @@
                 "file_name": "boundaries/wiesbaden.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "metzingen.osm.pbf",
+            "output_format": "pbf",
+            "description": "Metzingen, r/2774075",
+            "polygon": {
+                "file_name": "boundaries/metzingen.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
