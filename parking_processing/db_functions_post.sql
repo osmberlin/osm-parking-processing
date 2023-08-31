@@ -6,17 +6,13 @@ AS $function$
     WITH features AS (
         SELECT
             b.id,
-            b.name,
+            b.name name,
             b.admin_level,
-            b.area_sqkm,
-            b.street_side_km,
-            b.lane_km,
-            b.d_other_km,
-            b.sum_km,
-            b.length_wo_dual_carriageway,
-			round(b.done_percent) done_percent,
-			b.geom,
-			ST_PointOnSurface(b.geom) geom_label,
+            b.length_done_km,
+            b.length_notdone_km,
+            round(b.done_percent) done_percent,
+            b.geom,
+            ST_PointOnSurface(b.geom) geom_label,
             (
                 SELECT json_agg(st_asgeojson(b1.*)::json)
                 FROM
@@ -34,12 +30,16 @@ AS $function$
         WHERE
             s.name = region
             AND ST_Intersects(ST_Transform(ST_Buffer(ST_Transform(b.geom, 25833), -50), 4326), s.geom)
-        ORDER BY b.admin_level, b.name
+        ORDER BY b.admin_level, b.admin_name
     )
 	SELECT json_build_object(
         'type', 'FeatureCollection',
         'license', 'ODbL 1.0, https://opendatacommons.org/licenses/odbl/',
         'attribution', 'OpenStreetMap, https://www.openstreetmap.org/copyright',
+        'bbox', ST_Extent(features.geom),
+        'center', ST_Centroid(ST_Extent(features.geom)),
+        'timestamp_export', (SELECT CURRENT_TIMESTAMP(0)),
+	      'timestamp_osm', (SELECT importdate FROM o2pmiddle.planet_osm_replication_status),
         'features', json_agg(st_asgeojson(features.*)::json)
 	)
 	FROM features;

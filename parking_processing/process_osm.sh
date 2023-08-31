@@ -3,7 +3,10 @@
 export PGSERVICE=${PGSERVICE}
 
 function processosm () {
-    echo "run process"
+    echo "run spatial filter"
+    /bin/bash /config/run_spatialfilter.sh
+
+    echo "run processing"
 
     PG_SCHEMA_PROCESSING_EXISTS=$(psql -XAt -c "SELECT EXISTS (SELECT FROM information_schema.schemata WHERE schema_name = '${PG_SCHEMA_PROCESSING}');")
     if [ ! ${PG_SCHEMA_PROCESSING_EXISTS} = "t" ]

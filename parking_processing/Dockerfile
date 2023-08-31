@@ -15,5 +15,6 @@ RUN rm -rf /var/lib/apt/lists/*
 
 COPY ./.pg_service.conf /root/.pg_service.conf
 COPY ./export_data.py /config/export_data.py
+COPY ./spatialfilter.sql /config/spatialfilter.sql
 WORKDIR /osm
 CMD ["/bin/bash", "-i", "/config/process_osm.sh"]

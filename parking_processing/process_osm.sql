@@ -16,19 +16,47 @@ DROP TABLE IF EXISTS service;
 DROP TABLE IF EXISTS traffic_calming_points;
 
 CREATE TABLE amenity_parking_points AS SELECT * FROM import.amenity_parking_points;
+CREATE UNIQUE INDEX ON amenity_parking_points (id);
+
 CREATE TABLE boundaries AS SELECT * FROM import.boundaries;
+CREATE UNIQUE INDEX ON boundaries (id);
+
 CREATE TABLE buffer_area_highway AS SELECT * FROM import.area_highway;
+CREATE UNIQUE INDEX ON buffer_area_highway (id);
+
 CREATE TABLE obstacle_poly AS SELECT * FROM import.obstacle_poly;
+CREATE UNIQUE INDEX ON obstacle_poly (id);
+
 CREATE TABLE crossings AS SELECT * FROM import.crossings;
+CREATE UNIQUE INDEX ON crossings (id);
+
 CREATE TABLE footways AS SELECT * FROM import.footways;
+CREATE UNIQUE INDEX ON footways (id);
+
 CREATE TABLE highways AS SELECT * FROM import.highways;
+ALTER TABLE highways DROP COLUMN id;
+ALTER TABLE highways ADD COLUMN id SERIAL PRIMARY KEY;
+CREATE UNIQUE INDEX ON highways (id);
+
 CREATE TABLE obstacle_point AS SELECT * FROM import.obstacle_point;
+CREATE UNIQUE INDEX ON obstacle_point (id);
+
 CREATE TABLE parking_poly AS SELECT * FROM import.parking_poly;
+CREATE UNIQUE INDEX ON parking_poly (id);
+
 CREATE TABLE pt_platform AS SELECT * FROM import.pt_platform;
 CREATE TABLE pt_stops AS SELECT * FROM import.pt_stops;
+CREATE UNIQUE INDEX ON pt_stops (id);
+
 CREATE TABLE ramps AS SELECT * FROM import.ramps;
+CREATE UNIQUE INDEX ON ramps (id);
+
 CREATE TABLE service AS SELECT * FROM import.service;
+CREATE UNIQUE INDEX ON service (id);
+
 CREATE TABLE traffic_calming_points AS SELECT * FROM import.traffic_calming_points;
+CREATE UNIQUE INDEX ON traffic_calming_points (id);
+
 
 -- insert highway=service into highways table when there are parking information
 INSERT INTO highways
@@ -44,22 +72,6 @@ WHERE
   OR parking_right_orientation IN ('diagonal', 'marked', 'parallel', 'perpendicular', 'separate', 'yes'))
 ;
 
-ALTER TABLE highways DROP COLUMN id;
-ALTER TABLE highways ADD COLUMN id SERIAL PRIMARY KEY;
-
-CREATE UNIQUE INDEX ON amenity_parking_points (id);
-CREATE UNIQUE INDEX ON boundaries (id);
-CREATE UNIQUE INDEX ON buffer_area_highway (id);
-CREATE UNIQUE INDEX ON obstacle_poly (id);
-CREATE UNIQUE INDEX ON crossings (id);
-CREATE UNIQUE INDEX ON footways (id);
-CREATE UNIQUE INDEX ON highways (id);
-CREATE UNIQUE INDEX ON obstacle_point (id);
-CREATE UNIQUE INDEX ON parking_poly (id);
-CREATE UNIQUE INDEX ON pt_stops (id);
-CREATE UNIQUE INDEX ON ramps (id);
-CREATE UNIQUE INDEX ON service (id);
-CREATE UNIQUE INDEX ON traffic_calming_points (id);
 
 --transform to local SRS , we can use meters instead of degree for calculations
 --TODO check if all ST_* functions used are fine with geography type -> change to geography type
@@ -288,43 +300,100 @@ CREATE INDEX highway_crossings_geog_buffer_idx ON highway_crossings USING gist (
 ALTER TABLE highway_crossings ADD COLUMN IF NOT EXISTS geom geometry;
 UPDATE highway_crossings SET geom = ST_Transform(geog::geometry, 25833);
 
--- DROP TABLE IF EXISTS highway_segments;
--- CREATE TABLE highway_segments AS
--- WITH crossing_intersecting_highways AS(
---    SELECT
---      h.id AS lines_id,
---      h.highway_name AS highway_name,
---      h.geog AS line_geog,
---      (ST_Union(c.geog::geometry))::geography AS blade
---    FROM highway_union h, highway_crossings c
---    WHERE h.geog && c.geog_buffer
---    GROUP BY h.id, h.highway_name, h.type, h.geog
--- )
--- SELECT
---   lines_id,
---   highway_name,
---   --todo let ST_Splap accept geography
---   ((ST_Dump(ST_Splap(line_geog::geometry, blade::geometry, 0.0000000000001))).geom)::geography geog
--- FROM
---   crossing_intersecting_highways
--- WHERE
---     ST_GeometryType(blade::geometry) IN ('ST_Point', 'ST_MultiPoint')
--- ;
--- ALTER TABLE highway_segments ADD COLUMN id SERIAL PRIMARY KEY;
--- CREATE UNIQUE INDEX ON highway_segments (id);
--- ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer_left geography;
--- UPDATE highway_segments SET geog_buffer_left = ST_Buffer(geog, 8, 'side=left endcap=flat');
--- ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer_right geography;
--- UPDATE highway_segments SET geog_buffer_right = ST_Buffer(geog, 8, 'side=right endcap=flat');
--- ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer geography;
--- UPDATE highway_segments SET geog_buffer = ST_Buffer(geog, 8, 'endcap=flat');
---
--- DROP INDEX IF EXISTS highway_segments_geog_buffer_left_idx;
--- CREATE INDEX highway_segments_geog_buffer_left_idx ON highway_segments USING gist (geog_buffer_left);
--- DROP INDEX IF EXISTS highway_segments_geog_buffer_right_idx;
--- CREATE INDEX highway_segments_geog_buffer_right_idx ON highway_segments USING gist (geog_buffer_right);
--- DROP INDEX IF EXISTS highway_segments_geog_buffer_idx;
--- CREATE INDEX highway_segments_geog_buffer_idx ON highway_segments USING gist (geog_buffer);
+
+
+DROP TABLE IF EXISTS highway_segments;
+CREATE TABLE highway_segments AS
+WITH crossing_intersecting_highways AS(
+  SELECT
+    h.id AS lines_id,
+    h.highway_name AS highway_name,
+    h.geog AS line_geog,
+    (ST_Union(c.geog::geometry))::geography AS blade
+  FROM highway_union h, highway_crossings c
+  WHERE h.geog && c.geog_buffer
+  GROUP BY h.id, h.highway_name, h.geog
+)
+SELECT
+ ch.lines_id,
+ ch.highway_name,
+ --array_agg(DISTINCT h.osm_id) highway_osm_ids,
+ --todo let ST_Splap accept geography
+ ((ST_Dump(ST_Splap(ch.line_geog::geometry, ch.blade::geometry, 0.0000000000001))).geom)::geography geog
+FROM
+ crossing_intersecting_highways ch
+
+WHERE
+   ST_GeometryType(blade::geometry) IN ('ST_Point', 'ST_MultiPoint')
+--GROUP BY ch.lines_id, ch.highway_name,ch.line_geog ,ch.blade
+;
+ALTER TABLE highway_segments ADD COLUMN id SERIAL PRIMARY KEY;
+CREATE UNIQUE INDEX ON highway_segments (id);
+ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer_left geography;
+UPDATE highway_segments SET geog_buffer_left = ST_Buffer(geog, 8, 'side=left endcap=flat');
+ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer_right geography;
+UPDATE highway_segments SET geog_buffer_right = ST_Buffer(geog, 8, 'side=right endcap=flat');
+ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer geography;
+UPDATE highway_segments SET geog_buffer = ST_Buffer(geog, 8, 'endcap=flat');
+
+DROP INDEX IF EXISTS highway_segments_geog_buffer_left_idx;
+CREATE INDEX highway_segments_geog_buffer_left_idx ON highway_segments USING gist (geog_buffer_left);
+DROP INDEX IF EXISTS highway_segments_geog_buffer_right_idx;
+CREATE INDEX highway_segments_geog_buffer_right_idx ON highway_segments USING gist (geog_buffer_right);
+DROP INDEX IF EXISTS highway_segments_geog_buffer_idx;
+CREATE INDEX highway_segments_geog_buffer_idx ON highway_segments USING gist (geog_buffer);
+DROP INDEX IF EXISTS highway_segments_geog_idx;
+CREATE INDEX highway_segments_geog_idx ON highway_segments USING gist (geog);
+ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geom geometry;
+UPDATE highway_segments SET geom = geog::geometry;
+
+DROP INDEX IF EXISTS highway_segments_geom_idx;
+CREATE INDEX highway_segments_geom_idx ON highway_segments USING gist (geom);
+
+
+ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_x geography;
+UPDATE highway_segments hs SET geog_x =
+(WITH intersectionbuffer AS (
+  SELECT
+    hs.id,
+    (ST_Union(hi.geog_buffer::geometry))::geometry geom
+  FROM
+    highway_intersections hi
+  WHERE ST_Intersects(hs.geog, hi.geog_buffer)
+  GROUP BY hs.id
+ )
+ SELECT
+   ST_Difference(hs.geom, ib.geom)
+ FROM
+   intersectionbuffer ib,
+   highway_segments hs
+ WHERE hs.id = ib.id AND hs.geom && ib.geom
+);
+
+DELETE FROM highway_segments WHERE ST_Length(geog_x) < 10;
+
+DROP INDEX IF EXISTS highway_segments_geog_x_idx;
+CREATE INDEX highway_segments_geog_x_idx ON highway_segments USING gist (geog_x);
+
+ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geom_x geometry;
+UPDATE highway_segments SET geom_x = ST_Transform(geog_x::geometry, 25833);
+DROP INDEX IF EXISTS highway_segments_geom_x_idx;
+CREATE INDEX highway_segments_geom_x_idx ON highway_segments USING gist (geom_x);
+
+
+ALTER TABLE highway_segments ADD COLUMN highway_osm_ids jsonb;
+UPDATE highway_segments hs SET highway_osm_ids = (
+  SELECT
+     jsonb_agg(DISTINCT h.osm_id)
+  FROM
+    highways h
+  WHERE h.id IS NOT NULL AND ST_Intersects(h.geog, hs.geog_x)
+  GROUP BY hs.id
+  --LIMIT 1
+);
+DROP INDEX IF EXISTS highway_segments_highway_osm_ids_idx;
+CREATE INDEX highway_segments_highway_osm_ids_idx ON highway_segments USING GIN (highway_osm_ids jsonb_path_ops);
+
 
 
 DROP TABLE IF EXISTS pp_points;
@@ -507,6 +576,400 @@ CREATE UNIQUE INDEX ON pl_separated_union (id);
 DROP INDEX IF EXISTS pl_separated_union_geog_idx;
 CREATE INDEX pl_separated_union_geog_idx ON pl_separated_union USING gist (geog);
 
+DROP TABLE IF EXISTS pp_dumped;
+CREATE TABLE pp_dumped AS
+SELECT
+  p.osm_id,
+  p.osm_type,
+  p.parking position,
+  p.parking_orientation "orientation",
+  p.capacity capacity_osm,
+  'OSM' "source:capacity_osm",
+  CASE
+    WHEN p.capacity IS NULL THEN GREATEST(1, floor(ST_Area(p.geog) / 12.2))
+    ELSE p.capacity
+  END capacity,
+  CASE
+    WHEN p.capacity IS NULL THEN 'estimated'
+    ELSE 'OSM'
+  END "source:capacity",
+  h.geom <-> ST_Transform(p.geom, 25833) highway_dist,
+  ST_Distance(ST_ClosestPoint(h.geom, ST_LineInterpolatePoint(ST_Transform((ST_DumpSegments(p.geom)).geom, 25833), 0.5)), ST_LineInterpolatePoint(ST_Transform((ST_DumpSegments(p.geom)).geom, 25833), 0.5)) dist_closest_point,
+  h.osm_id highway_osm_id,
+  h.osm_type highway_osm_type,
+  degrees(ST_Azimuth(ST_StartPoint((ST_DumpSegments(p.geom)).geom), ST_EndPoint((ST_DumpSegments(p.geom)).geom))) angle,
+  (ST_DumpSegments(p.geom)).path,
+  ST_Transform((ST_DumpSegments(p.geom)).geom, 25833) geom
+
+FROM
+  parking_poly p
+  JOIN LATERAL (
+    SELECT
+      h.*
+    FROM
+      highways h
+    WHERE
+      h.geog_buffer && p.geog
+    ORDER BY
+      --order by biggest intersection area
+      GREATEST(ST_Area(ST_Intersection(h.geog_buffer_right, p.geog)), ST_Area(ST_Intersection(h.geog_buffer_left, p.geog))) DESC,
+      --afterwards by smallest distance
+      h.geom <-> ST_Transform(p.geom, 25833)
+    LIMIT 1
+  ) AS h ON true
+  --highways h
+WHERE
+  ST_Geometrytype(p.geom) = 'ST_Polygon'
+  AND h.geog_buffer && p.geog
+;
+
+ALTER TABLE pp_dumped ADD COLUMN id SERIAL PRIMARY KEY;
+
+DROP INDEX IF EXISTS pp_dumped_geom_idx;
+CREATE INDEX pp_dumped_geom_idx ON pp_dumped USING gist (geom);
+CREATE INDEX pp_dumped_position_idx ON pp_dumped (position);
+CREATE INDEX pp_dumped_osm_id_idx ON pp_dumped (osm_id);
+
+
+DROP TABLE IF EXISTS kerbs_temp;
+CREATE TABLE kerbs_temp AS
+SELECT
+  a.osm_id,
+  a.osm_type,
+--  a.id,
+  v.side,
+  a.type highway,
+  a.name "highway:name",
+  a.osm_id highway_osm_id,
+  a.operator_type,
+  a.parking_width_proc "highway:width_proc",
+  a.parking_width_proc_effective "highway:width_proc:effective",
+  a.surface,
+  --a.parking_position,
+  CASE WHEN v.side = 'left' THEN a.parking_left_position
+       WHEN v.side = 'right' THEN a.parking_right_position
+  END "position",
+  CASE WHEN v.side = 'left' THEN a.parking_left_orientation
+       WHEN v.side = 'right' THEN a.parking_right_orientation
+  END "orientation",
+  CASE
+    WHEN v.side = 'left' AND a.parking_left_capacity IS NOT NULL THEN a.parking_left_capacity
+    WHEN v.side = 'right' AND a.parking_right_capacity IS NOT NULL THEN a.parking_right_capacity
+    ELSE NULL
+  END capacity_osm,
+  CASE
+    WHEN v.side = 'left' AND a.parking_left_capacity IS NOT NULL THEN a.parking_left_source_capacity
+    WHEN v.side = 'right' AND a.parking_right_capacity IS NOT NULL THEN a.parking_right_source_capacity
+    ELSE NULL
+  END "source:capacity_osm",
+  0 capacity,
+  'estimated' "source:capacity",
+  CASE WHEN v.side = 'left' THEN a.parking_left_width_carriageway
+       WHEN v.side = 'right' THEN a.parking_right_width_carriageway
+  END width,
+  CASE WHEN v.side = 'left' THEN a.parking_left_offset
+       WHEN v.side = 'right' THEN a.parking_right_offset
+  END "offset",
+  0 angle,
+  0 deg,
+  CASE
+    WHEN v.side IN ('left') THEN
+      ST_Transform(
+        ST_OffsetCurve(
+          ST_Transform(a.geog::geometry,25833),
+          a.parking_left_offset
+        ), 4326
+      )::geography
+    WHEN v.side IN ('right') THEN
+      ST_Transform(
+        ST_OffsetCurve(
+          ST_Transform(a.geog::geometry,25833),
+          a.parking_right_offset
+        ), 4326
+      )::geography
+  END geog,
+  CASE
+    WHEN v.side IN ('left') THEN
+        ST_OffsetCurve(
+          ST_Transform(a.geog::geometry,25833),
+          a.parking_left_offset
+        )
+    WHEN v.side IN ('right') THEN
+        ST_OffsetCurve(
+          ST_Transform(a.geog::geometry,25833),
+          a.parking_right_offset
+        )
+  END geom,
+  a.geom geom_highway
+FROM
+  (VALUES ('left'), ('right')) AS v(side)
+  CROSS JOIN
+  highways a
+;
+ALTER TABLE kerbs_temp ADD COLUMN id SERIAL PRIMARY KEY;
+CREATE UNIQUE INDEX ON kerbs_temp (id);
+CREATE INDEX ON kerbs_temp (highway_osm_id);
+CREATE INDEX ON kerbs_temp (osm_id);
+DROP INDEX IF EXISTS kerbs_temp_geog_idx;
+CREATE INDEX kerbs_temp_geog_idx ON kerbs_temp USING gist (geog);
+DROP INDEX IF EXISTS kerbs_temp_geom_idx;
+CREATE INDEX kerbs_temp_geom_idx ON kerbs_temp USING gist (geom);
+UPDATE kerbs_temp SET angle = degrees(ST_Azimuth(ST_StartPoint(geom), ST_EndPoint(geom)));
+UPDATE kerbs_temp SET deg = ST_Azimuth(ST_StartPoint(geom), ST_EndPoint(geom));
+
+ALTER TABLE kerbs_temp ADD COLUMN IF NOT EXISTS geom_buffer geometry(MultiPolygon, 25833);
+UPDATE kerbs_temp SET geom_buffer = ST_Multi(ST_Buffer(geom, 15, 'endcap=flat'));
+DROP INDEX IF EXISTS kerbs_temp_geom_buffer_idx;
+CREATE INDEX kerbs_temp_geom_buffer_idx ON kerbs_temp USING gist (geom_buffer);
+
+ALTER TABLE kerbs_temp ADD COLUMN IF NOT EXISTS geom_left_buffer geometry(MultiPolygon, 25833);
+UPDATE kerbs_temp SET geom_left_buffer = ST_Multi(ST_Buffer(geom, 8, 'side=left endcap=flat'));
+DROP INDEX IF EXISTS kerbs_temp_geom_left_buffer_idx;
+CREATE INDEX kerbs_temp_geom_left_buffer_idx ON kerbs_temp USING gist (geom_left_buffer);
+
+ALTER TABLE kerbs_temp ADD COLUMN IF NOT EXISTS geom_right_buffer geometry(MultiPolygon, 25833);
+UPDATE kerbs_temp SET geom_right_buffer = ST_Multi(ST_Buffer(geom, 8, 'side=right endcap=flat'));
+DROP INDEX IF EXISTS kerbs_temp_geom_right_buffer_idx;
+CREATE INDEX kerbs_temp_geom_right_buffer_idx ON kerbs_temp USING gist (geom_right_buffer);
+
+ALTER TABLE kerbs_temp ADD COLUMN IF NOT EXISTS geom_highway_left_buffer geometry(MultiPolygon, 25833);
+UPDATE kerbs_temp SET geom_highway_left_buffer = ST_Multi(ST_Buffer(geom_highway, 10, 'side=left endcap=flat'));
+DROP INDEX IF EXISTS kerbs_temp_geom_highway_left_buffer_idx;
+CREATE INDEX kerbs_temp_geom_highway_left_buffer_idx ON kerbs_temp USING gist (geom_highway_left_buffer);
+
+ALTER TABLE kerbs_temp ADD COLUMN IF NOT EXISTS geom_highway_right_buffer geometry(MultiPolygon, 25833);
+UPDATE kerbs_temp SET geom_highway_right_buffer = ST_Multi(ST_Buffer(geom_highway, 10, 'side=right endcap=flat'));
+DROP INDEX IF EXISTS kerbs_temp_geom_highway_right_buffer_idx;
+CREATE INDEX kerbs_temp_geom_highway_right_buffer_idx ON kerbs_temp USING gist (geom_highway_right_buffer);
+
+
+
+DROP TABLE IF EXISTS joined;
+  CREATE TABLE joined AS
+  SELECT
+    p.osm_id pp_osm_id,
+    p.osm_type pp_osm_type,
+    k.side,
+    k.highway,
+    k."highway:name",
+    k.osm_id highway_osm_id,
+    k.osm_type,
+    k.operator_type,
+    k."highway:width_proc",
+    k."highway:width_proc:effective",
+    k.surface,
+    p.position,
+    p."orientation",
+    ( SELECT percentile_cont(0.8) WITHIN GROUP (ORDER BY pp.highway_dist) AS median
+      FROM pp_dumped pp
+      WHERE pp.id = p.id
+      GROUP BY pp.id
+    ) median_dist_to_highway,
+    CASE
+      WHEN p.capacity IS NULL THEN GREATEST(1, floor(ST_Area(p.geom::geography) / 12.2))
+      ELSE p.capacity
+    END capacity,
+    CASE
+      WHEN p.capacity IS NULL THEN 'estimated'
+      ELSE 'OSM'
+    END "source:capacity",
+    0 width,
+    k."offset",
+    hw_angle.avalue hw_angle,
+    k.angle k_angle,
+    p.angle p_angle,
+    -- winkel zwischen zwei benachbarten Parkflächensegmenten
+    ( SELECT
+        string_agg(ppd.id::text, ',')
+      FROM
+        pp_dumped ppd
+      WHERE
+        ppd.osm_id = p.osm_id
+        AND (ppd.path)[2] = ((p.path)[2] ) % max_path.v + 1
+    ) new_angle,
+    ( SELECT
+        ST_EndPoint(ppd.geom)
+      FROM
+        pp_dumped ppd
+      WHERE
+        p.osm_id = ppd.osm_id
+        AND (ppd.path)[2] = ((p.path)[2] ) % max_path.v + 1
+      LIMIT 1
+    ) new_angle1,
+    p.id pp_dumped_id,
+    CASE
+      WHEN k.side = 'right' THEN acosd(cosd(hw_angle.avalue) * cosd(p.angle) + sind(hw_angle.avalue) * sind(p.angle))
+    WHEN k.side = 'left' THEN (180 - acosd(cosd(hw_angle.avalue) * cosd(p.angle) + sind(hw_angle.avalue) * sind(p.angle)))
+    ELSE 0
+    END k1_value_new_hw,
+    acosd(cosd(k.angle) * cosd(p.angle) + sind(k.angle) * sind(p.angle)) k1_value,
+    CASE
+      WHEN k.side = 'right' THEN acosd(cosd(hw_angle.avalue) * cosd(p.angle) + sind(hw_angle.avalue) * sind(p.angle)) < 30
+      WHEN k.side = 'left' THEN (180 - acosd(cosd(hw_angle.avalue) * cosd(p.angle) + sind(hw_angle.avalue) * sind(p.angle))) < 30
+      ELSE false
+    END k1,
+  --  p.highway_osm_id = k.osm_id k2,
+    k.osm_id = p.highway_osm_id k2,
+    round(p.dist_closest_point::numeric, 2)  k3_p_dist_closest_point,
+  round((max_dist.v - p.dist_closest_point)::numeric, 2) < 2 k3_new_value,
+  round((max_dist.v - p.dist_closest_point)::numeric, 2) k3_new_value_diff,
+  p.highway_dist  k3_p_highway_dist,
+    round(max_dist.v::numeric, 2) k3_highway_max_dist,
+    ST_LineInterpolatePoint(p.geom, 0.5) k3_li_point,
+    (SELECT ST_Union(ST_Closestpoint(h.geom_x, ST_LineInterpolatePoint(p.geom, 0.5)))
+         FROM highway_segments h
+         WHERE h.highway_osm_ids @> to_jsonb(p.highway_osm_id)
+         GROUP BY p.highway_osm_id
+    ) k3_c_point,
+    ((SELECT avg(ST_Distance(ST_LineInterpolatePoint(p.geom, 0.5), ST_Closestpoint(h.geom_x, ST_LineInterpolatePoint(p.geom, 0.5))))
+         FROM highway_segments h
+         WHERE h.highway_osm_ids @> to_jsonb(p.highway_osm_id)
+         GROUP BY p.highway_osm_id
+      ) > max_dist.v * 0.75
+    ) k3_max_dist,
+     (SELECT avg(ST_Distance(ST_LineInterpolatePoint(p.geom, 0.5), ST_Closestpoint(h.geom_x, ST_LineInterpolatePoint(p.geom, 0.5))))
+         FROM highway_segments h
+         WHERE h.highway_osm_ids @> to_jsonb(p.highway_osm_id)
+         GROUP BY p.highway_osm_id
+    ) highway_dist_avg,
+     (SELECT array_agg(ST_Distance(ST_LineInterpolatePoint(p.geom, 0.5), ST_Closestpoint(h.geom_x, ST_LineInterpolatePoint(p.geom, 0.5))))
+         FROM highway_segments h
+         WHERE h.highway_osm_ids @> to_jsonb(p.highway_osm_id)
+         GROUP BY p.highway_osm_id
+    ) highway_dist_array,
+    CASE
+      WHEN
+        k.side = 'right'
+        -- angle between kerb line and parking segment should be < 26
+        AND acosd(cosd(hw_angle.avalue) * cosd(p.angle) + sind(hw_angle.avalue) * sind(p.angle)) < 30
+        -- test if we are on the same street (e.g. not the crossing street)
+        AND k.osm_id = p.highway_osm_id
+        AND round((max_dist.v - p.dist_closest_point)::numeric, 2) < 2
+      THEN true
+      WHEN
+        k.side = 'left'
+        AND (180 - acosd(cosd(hw_angle.avalue) * cosd(p.angle) + sind(hw_angle.avalue) * sind(p.angle))) < 30
+        AND k.osm_id = p.highway_osm_id
+        AND round((max_dist.v - p.dist_closest_point)::numeric, 2) < 2
+      THEN true
+      ELSE false
+    END keep,
+    CASE
+      WHEN ST_Intersects(k.geom_highway_left_buffer, p.geom) then true
+      WHEN ST_Intersects(k.geom_highway_right_buffer, p.geom) then false
+    ELSE false
+    END is_left,
+    max_path.v max_path_id,
+    max_dist.v max_dist_closest_point,
+    hw_debug.avalue debug_osm_ids,
+    k.geom k_geom,
+    p.geom p_geom,
+    ST_Buffer(k.geom, 15, 'endcap=flat') k_buffer
+  FROM
+    pp_dumped p,
+    kerbs_temp k
+    LEFT JOIN LATERAL (
+      SELECT
+        degrees(
+          ST_Azimuth(
+            ST_Closestpoint(h.geom_x, ST_LineInterpolatePoint(p.geom, 0.25)),
+            ST_Closestpoint(h.geom_x, ST_LineInterpolatePoint(p.geom, 0.75))
+          )
+        ) avalue
+      FROM highway_segments h
+    WHERE  h.highway_osm_ids @> to_jsonb(p.highway_osm_id)
+    --LIMIT 1
+    ) AS hw_angle ON true
+    LEFT JOIN LATERAL (
+      SELECT MAX((pp.path)[2]) v
+      FROM   pp_dumped pp
+      WHERE  pp.osm_id = p.osm_id
+      GROUP BY pp.osm_id, pp.osm_type
+    ) AS max_path ON true
+    LEFT JOIN LATERAL (
+      SELECT MAX(dist_closest_point) v
+      FROM   pp_dumped pp
+      WHERE  pp.osm_id = p.osm_id AND pp.highway_osm_id = k.highway_osm_id
+      GROUP BY pp.osm_id, pp.osm_type
+    ) AS max_dist ON true
+    LEFT JOIN LATERAL (
+      SELECT
+        h.highway_osm_ids avalue
+      FROM highway_segments h
+      WHERE  h.highway_osm_ids @> to_jsonb(p.highway_osm_id)
+      --LIMIT 1
+    ) AS hw_debug ON true
+  WHERE
+    (ST_Intersects(ST_Buffer(k.geom_highway, 15, 'endcap=flat'), p.geom))
+    AND k.highway_osm_id = p.highway_osm_id
+    AND p.position IN ('street_side', 'lane')
+  ;
+
+ALTER TABLE joined ADD COLUMN id SERIAL PRIMARY KEY;
+CREATE UNIQUE INDEX ON joined (id);
+CREATE INDEX joined_highway_osm_id_idx ON joined (highway_osm_id);
+
+
+DROP TABLE IF EXISTS joined_lines;
+CREATE TABLE joined_lines AS
+SELECT
+  j.pp_osm_id,
+  j.pp_osm_type,
+  j.side,
+  j.highway,
+  j."highway:name",
+  j.highway_osm_id,
+  j.operator_type,
+  j."highway:width_proc",
+  j."highway:width_proc:effective",
+  j.surface,
+  j.position,
+  j."orientation",
+  NULL capacity_osm,
+  NULL "source:capacity_osm",
+  j.capacity,
+  j."source:capacity",
+  j.width,
+  (ARRAY_AGG(DISTINCT j.is_left))[0] is_left,
+  MAX(j."offset") "offset",
+  --  MAX(j.highway_dist) highway_dist,
+  --  MIN(j.kerb_dist) kerb_dist,
+  ST_LineMerge(ST_Collect(j.p_geom)) geom
+FROM
+  joined j
+WHERE
+  j.keep AND ST_Length(j.p_geom) > 1
+GROUP BY
+  j.pp_osm_type, j.pp_osm_id, j.side, j.highway, j."highway:name", j.highway_osm_id, j.operator_type, j."highway:width_proc",
+  j."highway:width_proc:effective", j.surface, j.position, j."orientation", j.capacity, j."source:capacity", j.width
+--  j.osm_type, j.osm_id, j.side
+--  j.highway_osm_id, j.side
+;
+ALTER TABLE joined_lines ADD COLUMN id SERIAL PRIMARY KEY;
+CREATE UNIQUE INDEX ON joined_lines (id);
+DROP INDEX IF EXISTS joined_lines_geom_idx;
+CREATE INDEX joined_lines_geom_idx ON joined_lines USING gist (geom);
+
+ALTER TABLE joined_lines ADD COLUMN IF NOT EXISTS geom_buffer geometry;
+UPDATE joined_lines SET geom_buffer =
+CASE
+  WHEN side = 'left' AND is_left THEN ST_Buffer(geom, ("offset") , 'side=left endcap=flat')
+  WHEN side = 'left' AND NOT is_left THEN ST_Buffer(geom, ("offset") , 'side=right endcap=flat')
+  WHEN side = 'right' AND is_left THEN ST_Buffer(geom, ("offset") , 'side=left endcap=flat')
+  WHEN side = 'right' AND NOT is_left THEN ST_Buffer(geom, ("offset") , 'side=right endcap=flat')
+END;
+
+ALTER TABLE joined_lines ADD COLUMN IF NOT EXISTS geog geography;
+UPDATE joined_lines SET geog = (ST_Transform(ST_Multi(geom), 4326))::geography(MultiLineString, 4326);
+DROP INDEX IF EXISTS joined_lines_geog_idx;
+CREATE INDEX joined_lines_geog_idx ON joined_lines USING gist (geog);
+
+ALTER TABLE joined_lines ADD COLUMN IF NOT EXISTS geog_buffer geography;
+UPDATE joined_lines SET geog_buffer = (ST_Transform(ST_Multi(geom_buffer), 4326))::geography(MultiPolygon, 4326);
+DROP INDEX IF EXISTS joined_lines_geog_buffer_idx;
+CREATE INDEX joined_lines_geog_buffer_idx ON joined_lines USING gist (geog_buffer);
+;
+
 
 DROP TABLE IF EXISTS parking_lanes_temp;
 CREATE TABLE parking_lanes_temp AS
@@ -581,57 +1044,29 @@ FROM
   CROSS JOIN
   highways a
   LEFT JOIN pl_separated_union s ON ST_Intersects(s.geog, ST_Buffer(a.geog, 0.2)) AND v.side = s.side
--- UNION ALL
--- SELECT
---   h.way_id way_id,
---   pl.side,
---   h.type highway,
---   h.name "highway:name",
---   h.operator_type,
---   NULL "highway:width_proc",
---   NULL "highway:width_proc:effective",
---   NULL surface,
---   p.parking position,
---   p.parking_orientation "orientation",
---   p.capacity capacity_osm,
---   'OSM' "source:capacity_osm",
---   CASE
---     WHEN p.capacity IS NULL THEN GREATEST(1, floor(ST_Area(p.geog) / 12.2))
---     ELSE p.capacity
---   END capacity,
---   CASE
---     WHEN p.capacity IS NULL THEN 'estimated'
---     ELSE 'OSM'
---   END "source:capacity",
---   NULL width,
---   CASE
---     WHEN pl.side = 'left' THEN h.parking_left_offset
---     WHEN pl.side = 'right' THEN h.parking_right_offset
---   END "offset",
---   CASE
---     WHEN pl.side = 'left' THEN ST_Transform(ST_OffsetCurve(ST_Simplify(ST_Transform(ST_LineMerge(pl.geog::geometry), 25833), (ST_Length(ST_Transform(ST_LineMerge(pl.geog::geometry), 25833)) * 0.1)), h.parking_left_offset), 4326)::geography
---     WHEN pl.side = 'right' THEN ST_Transform(ST_OffsetCurve(ST_Simplify(ST_Transform(ST_LineMerge(pl.geog::geometry), 25833), (ST_Length(ST_Transform(ST_LineMerge(pl.geog::geometry), 25833)) * 0.1)), h.parking_right_offset), 4326)::geography
---   END geog,
---   'GEOMETRYCOLLECTION EMPTY'::geography geog_shorten,
---   '{}'::jsonb error_output
--- FROM
---   pl_separated pl
---   LEFT JOIN parking_poly p ON p.id = pl.pp_id
---   JOIN LATERAL (
---     SELECT
---       h.*
---     FROM
---       highways h
---     WHERE
---       h.geog_buffer_right && p.geog
---       OR h.geog_buffer_left && p.geog
---     ORDER BY
---       --order by biggest intersection area
---       ST_Area(ST_Intersection(h.geog_buffer_right, p.geog)) + ST_Area(ST_Intersection(h.geog_buffer_left, p.geog)) DESC,
---       --afterwards by smallest distance
---       p.geog <-> h.geog
---     LIMIT 1
---   ) AS h ON true
+UNION ALL
+SELECT
+  j.pp_osm_id,
+  j.pp_osm_type,
+  j.side,
+  j.highway,
+  j."highway:name",
+  j.operator_type,
+  j."highway:width_proc",
+  j."highway:width_proc:effective",
+  j.surface,
+  j.position,
+  j."orientation",
+  NULL capacity_osm,
+  NULL "source:capacity_osm",
+  j.capacity,
+  j."source:capacity",
+  0 width,
+  j."offset",
+  ST_Transform(j.geom, 4326)::geography geog
+  --NULL error_output
+FROM
+  joined_lines j
 ;
 ALTER TABLE parking_lanes_temp ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON parking_lanes_temp (id);
@@ -1649,7 +2084,7 @@ DELETE FROM highways_admin WHERE ST_GeometryType(geom) NOT IN ('ST_LineString', 
 ALTER TABLE highways_admin ALTER COLUMN geom TYPE geometry(MultiLinestring, 4326) USING ST_Transform(ST_Multi(geom), 4326);
 ALTER TABLE highways_admin ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON highways_admin (id);
-CREATE INDEX ON processing.boundaries (admin_level);
+CREATE INDEX ON boundaries (admin_level);
 ALTER TABLE highways_admin ADD COLUMN IF NOT EXISTS geog geography(MultiLineString, 4326);
 UPDATE highways_admin SET geog = geom::geography;
 CREATE INDEX highways_admin_geog_idx ON highways_admin USING gist (geog);
@@ -1709,3 +2144,63 @@ DROP INDEX IF EXISTS boundaries_stats_geom_idx;
 CREATE INDEX boundaries_stats_geom_idx ON boundaries_stats USING gist (geom);
 ALTER TABLE boundaries_stats ADD COLUMN IF NOT EXISTS done_percent numeric;
 UPDATE boundaries_stats SET done_percent = ROUND((street_side_km + lane_km) / NULLIF(sum_km, 0) * 100, 1);
+
+DROP TABLE IF EXISTS boundaries_stats_short;
+CREATE TABLE boundaries_stats_short AS
+WITH pre1 as (
+  SELECT
+    admin_name as admin_name,
+    admin_level,
+    parking_left_position as pos,
+    (SUM(ST_Length(geog)) FILTER (WHERE dual_carriageway IS NULL )) + ((SUM(ST_Length(geog)) FILTER (WHERE dual_carriageway = true )) / 2) as laenge
+  FROM processing.highways_admin
+  WHERE type IN ('primary', 'primary_link', 'secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'residential', 'unclassified', 'living_street', 'pedestrian, road')
+  GROUP BY parking_left_position, admin_name, admin_level
+  UNION
+  SELECT
+    admin_name as admin_name,
+    admin_level,
+    parking_right_position as pos,
+    (SUM(ST_Length(geog)) FILTER (WHERE dual_carriageway IS NULL )) + ((SUM(ST_Length(geog)) FILTER (WHERE dual_carriageway = true )) / 2) as laenge
+  FROM processing.highways_admin
+  WHERE type IN ('primary', 'primary_link', 'secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'residential', 'unclassified', 'living_street', 'pedestrian, road')
+  GROUP BY parking_right_position, admin_name, admin_level
+)
+, pre2 as (
+SELECT
+  admin_name,
+  admin_level,
+  pos,
+  round(laenge::numeric / 1000, 1) laenge_km,
+  round((100 * laenge / Sum(laenge) OVER ())::numeric, 1) AS laenge_percent
+FROM (
+    SELECT
+    admin_name,
+    admin_level,
+    pos,
+    Sum(laenge) AS laenge
+    FROM pre1
+    GROUP BY pos, admin_name, admin_level
+    ) posi
+)
+SELECT
+  p.admin_name, p.admin_level,
+  SUM(p.laenge_km) FILTER (WHERE p.pos IS NOT NULL) as length_done_km,
+  SUM(p.laenge_km) FILTER (WHERE p.pos IS NULL) as length_notdone_km,
+  SUM(p.laenge_km) FILTER (WHERE p.pos IN ('street_side')) as street_side_km,
+  SUM(p.laenge_km) FILTER (WHERE p.pos IN ('lane')) as lane_km,
+  SUM(p.laenge_km) FILTER (WHERE p.pos IN ('on_kerb')) as on_kerb_km,
+  SUM(p.laenge_km) FILTER (WHERE p.pos IN ('half_on_kerb')) as half_on_kerb_km,
+  round(SUM(p.laenge_km) FILTER (WHERE p.pos IS NOT NULL) / NULLIF((SUM(p.laenge_km) FILTER (WHERE p.pos IS NOT NULL) + SUM(p.laenge_km) FILTER (WHERE p.pos IS NULL)), 0) * 100, 1)  as done_percent,
+  ST_Transform(b.geom, 4326) geom
+FROM pre2 p
+     LEFT JOIN boundaries b ON (b.name, b.admin_level) = (p.admin_name, p.admin_level)
+GROUP BY p.admin_name, p.admin_level, b.geom
+ORDER BY p.admin_level, p.admin_name
+;
+
+ALTER TABLE boundaries_stats_short ADD COLUMN id SERIAL PRIMARY KEY;
+CREATE UNIQUE INDEX ON boundaries_stats_short (id);
+DROP INDEX IF EXISTS boundaries_stats_short_geom_idx;
+CREATE INDEX boundaries_stats_short_geom_idx ON boundaries_stats_short USING gist (geom);
+

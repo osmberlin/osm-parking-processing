@@ -113,20 +113,20 @@ services:
       - parking_vt
 
 
-#  parking_pgadmin:
-#    container_name: parking_pgadmin
-#    image: dpage/pgadmin4
-#    environment:
-#      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-parking@example.org}
-#      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-#      PGADMIN_CONFIG_SERVER_MODE: 'False'
-#    volumes:
-#      - parking_v_pgadmin:/var/lib/pgadmin
-#    ports:
-#      - "${PGADMIN_PORT:-5050}:80"
-#    networks:
-#      - osmparking
-#    restart: unless-stopped
+  parking_pgadmin:
+    container_name: parking_pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-parking@example.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - parking_v_pgadmin:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - osmparking
+    restart: unless-stopped
 
 networks:
   osmparking:

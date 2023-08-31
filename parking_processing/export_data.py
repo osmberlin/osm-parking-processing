@@ -37,7 +37,8 @@ engine = sa.create_engine(f"postgresql+psycopg2:///?service={pg_service_name}")
 # define query
 query = '''
 SELECT 
-  p.*
+  p.*,
+  s."label" as "label"
 FROM {table_name} as p, meta.spatialfilter s 
 WHERE 
   s.name = '{region_name}' 
