@@ -82,8 +82,8 @@ function importosm () {
     --middle-schema="${PG_SCHEMA_MIDDLE}" \
     --server https://planet.osm.org/replication/minute/
 
-#    echo "run spatial filter after import"
-#    /bin/bash /config/run_spatialfilter.sh
+  echo "run spatial filter after import"
+  /bin/bash /config/run_spatialfilter.sh
 }
 
 function updateosm () {
@@ -92,6 +92,7 @@ function updateosm () {
   osm2pgsql-replication update \
     --middle-schema="${PG_SCHEMA_MIDDLE}" \
     --max-diff-size "$PG_OSM2PGSQL_DIFFSIZE" \
+    --post-processing /config/run_spatialfilter.sh \
     -- -O flex -S /config/parkraum.lua \
     || return $?
 
