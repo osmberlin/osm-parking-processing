@@ -144,6 +144,15 @@
                 "file_name": "boundaries/metzingen.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "freiburg.osm.pbf",
+            "output_format": "pbf",
+            "description": "Freiburg im Breisgau, r/62768",
+            "polygon": {
+                "file_name": "boundaries/freiburg.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
