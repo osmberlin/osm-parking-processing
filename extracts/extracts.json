@@ -153,6 +153,15 @@
                 "file_name": "boundaries/freiburg.geojson",
                 "file_type": "geojson"
             }
+        },
+        {
+            "output": "magdeburg.osm.pbf",
+            "output_format": "pbf",
+            "description": "Magdeburg, r/62481",
+            "polygon": {
+                "file_name": "boundaries/magdeburg.geojson",
+                "file_type": "geojson"
+            }
         }
     ]
 }
