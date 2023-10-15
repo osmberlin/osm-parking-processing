@@ -280,99 +280,6 @@ DROP INDEX IF EXISTS highway_intersections_geog_buffer_idx;
 CREATE INDEX highway_intersections_geog_buffer_idx ON highway_intersections USING gist (geog_buffer);
 
 
-
-DROP TABLE IF EXISTS highway_segments;
-CREATE TABLE highway_segments AS
-WITH crossing_intersecting_highways AS(
-  SELECT
-    h.id AS lines_id,
-    h.highway_name AS highway_name,
-    h.geog AS line_geog,
-    (ST_Union(c.geog::geometry))::geography AS blade
-  FROM highway_union h, highway_crossings c
-  WHERE h.geog && c.geog_buffer
-  GROUP BY h.id, h.highway_name, h.geog
-)
-SELECT
- ch.lines_id,
- ch.highway_name,
- --array_agg(DISTINCT h.osm_id) highway_osm_ids,
- --todo let ST_Splap accept geography
- ((ST_Dump(ST_Splap(ch.line_geog::geometry, ch.blade::geometry, 0.0000000000001))).geom)::geography geog
-FROM
- crossing_intersecting_highways ch
-
-WHERE
-   ST_GeometryType(blade::geometry) IN ('ST_Point', 'ST_MultiPoint')
---GROUP BY ch.lines_id, ch.highway_name,ch.line_geog ,ch.blade
-;
-ALTER TABLE highway_segments ADD COLUMN id SERIAL PRIMARY KEY;
-CREATE UNIQUE INDEX ON highway_segments (id);
-ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer_left geography;
-UPDATE highway_segments SET geog_buffer_left = ST_Buffer(geog, 8, 'side=left endcap=flat');
-ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer_right geography;
-UPDATE highway_segments SET geog_buffer_right = ST_Buffer(geog, 8, 'side=right endcap=flat');
-ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_buffer geography;
-UPDATE highway_segments SET geog_buffer = ST_Buffer(geog, 8, 'endcap=flat');
-
-DROP INDEX IF EXISTS highway_segments_geog_buffer_left_idx;
-CREATE INDEX highway_segments_geog_buffer_left_idx ON highway_segments USING gist (geog_buffer_left);
-DROP INDEX IF EXISTS highway_segments_geog_buffer_right_idx;
-CREATE INDEX highway_segments_geog_buffer_right_idx ON highway_segments USING gist (geog_buffer_right);
-DROP INDEX IF EXISTS highway_segments_geog_buffer_idx;
-CREATE INDEX highway_segments_geog_buffer_idx ON highway_segments USING gist (geog_buffer);
-DROP INDEX IF EXISTS highway_segments_geog_idx;
-CREATE INDEX highway_segments_geog_idx ON highway_segments USING gist (geog);
-ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geom geometry;
-UPDATE highway_segments SET geom = geog::geometry;
-
-DROP INDEX IF EXISTS highway_segments_geom_idx;
-CREATE INDEX highway_segments_geom_idx ON highway_segments USING gist (geom);
-
-ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_x geography;
-UPDATE highway_segments hs SET geog_x =
-(WITH intersectionbuffer AS (
-  SELECT
-    hs.id,
-    (ST_Union(hi.geog_buffer::geometry))::geometry geom
-  FROM
-    highway_intersections hi
-  WHERE ST_Intersects(hs.geog, hi.geog_buffer)
-  GROUP BY hs.id
- )
- SELECT
-   ST_Difference(hs.geom, ib.geom)
- FROM
-   intersectionbuffer ib,
-   highway_segments hs
- WHERE hs.id = ib.id AND hs.geom && ib.geom
-);
-
-DELETE FROM highway_segments WHERE ST_Length(geog_x) < 10;
-
-DROP INDEX IF EXISTS highway_segments_geog_x_idx;
-CREATE INDEX highway_segments_geog_x_idx ON highway_segments USING gist (geog_x);
-
-ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geom_x geometry;
-UPDATE highway_segments SET geom_x = ST_Transform(geog_x::geometry, 25833);
-DROP INDEX IF EXISTS highway_segments_geom_x_idx;
-CREATE INDEX highway_segments_geom_x_idx ON highway_segments USING gist (geom_x);
-
-ALTER TABLE highway_segments ADD COLUMN highway_osm_ids jsonb;
-UPDATE highway_segments hs SET highway_osm_ids = (
-  SELECT
-     jsonb_agg(DISTINCT h.osm_id)
-  FROM
-    highways h
-  WHERE h.id IS NOT NULL AND ST_Intersects(h.geog, hs.geog_x)
-  GROUP BY hs.id
-  --LIMIT 1
-);
-DROP INDEX IF EXISTS highway_segments_highway_osm_ids_idx;
-CREATE INDEX highway_segments_highway_osm_ids_idx ON highway_segments USING GIN (highway_osm_ids jsonb_path_ops);
-
-
-
 DROP TABLE IF EXISTS highway_crossings;
 CREATE TABLE highway_crossings AS
 SELECT
@@ -451,7 +358,6 @@ UPDATE highway_segments SET geom = geog::geometry;
 DROP INDEX IF EXISTS highway_segments_geom_idx;
 CREATE INDEX highway_segments_geom_idx ON highway_segments USING gist (geom);
 
-
 ALTER TABLE highway_segments ADD COLUMN IF NOT EXISTS geog_x geography;
 UPDATE highway_segments hs SET geog_x =
 (WITH intersectionbuffer AS (
@@ -481,7 +387,6 @@ UPDATE highway_segments SET geom_x = ST_Transform(geog_x::geometry, 25833);
 DROP INDEX IF EXISTS highway_segments_geom_x_idx;
 CREATE INDEX highway_segments_geom_x_idx ON highway_segments USING gist (geom_x);
 
-
 ALTER TABLE highway_segments ADD COLUMN highway_osm_ids jsonb;
 UPDATE highway_segments hs SET highway_osm_ids = (
   SELECT
@@ -494,7 +399,6 @@ UPDATE highway_segments hs SET highway_osm_ids = (
 );
 DROP INDEX IF EXISTS highway_segments_highway_osm_ids_idx;
 CREATE INDEX highway_segments_highway_osm_ids_idx ON highway_segments USING GIN (highway_osm_ids jsonb_path_ops);
-
 
 
 DROP TABLE IF EXISTS pp_points;
