@@ -6,10 +6,14 @@ AS $function$
     WITH features AS (
         SELECT
             b.id,
-            b.name name,
+            b.name,
             b.admin_level,
-            b.length_done_km,
-            b.length_notdone_km,
+            b.area_sqkm,
+            b.street_side_km,
+            b.lane_km,
+            b.d_other_km,
+            b.sum_km,
+            b.length_wo_dual_carriageway,
             round(b.done_percent) done_percent,
             b.geom,
             ST_PointOnSurface(b.geom) geom_label,
@@ -30,7 +34,7 @@ AS $function$
         WHERE
             s.name = region
             AND ST_Intersects(ST_Transform(ST_Buffer(ST_Transform(b.geom, 25833), -50), 4326), s.geom)
-        ORDER BY b.admin_level, b.admin_name
+        ORDER BY b.admin_level, b.name
     )
 	SELECT json_build_object(
         'type', 'FeatureCollection',
