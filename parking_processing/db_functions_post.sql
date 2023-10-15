@@ -43,7 +43,7 @@ AS $function$
         'bbox', ST_Extent(features.geom),
         'center', ST_Centroid(ST_Extent(features.geom)),
         'timestamp_export', (SELECT CURRENT_TIMESTAMP(0)),
-	      'timestamp_osm', (SELECT importdate FROM o2pmiddle.planet_osm_replication_status),
+	      'timestamp_osm', (SELECT value FROM o2pmiddle.osm2pgsql_properties WHERE property = 'replication_timestamp'),
         'features', json_agg(st_asgeojson(features.*)::json)
 	)
 	FROM features;
