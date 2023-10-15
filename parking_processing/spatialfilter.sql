@@ -1,20 +1,26 @@
 --TODO refactor hardcoded schema, table names and projection
 -- intersect with a slightly smaller geometry (-50 m buffer)
-DO
-$$
+DO $$
 DECLARE
     rec record;
+    spatial_filter GEOMETRY;
 BEGIN
+    -- Vorab-Berechnung des Spatial Filters einmalig, anstatt für jede Tabelle neu
+    SELECT ST_Union(ST_Transform(ST_Buffer(ST_Transform(geom, 25833), -50), 4326))
+    INTO spatial_filter
+    FROM meta.spatialfilter;
+
     FOR rec IN
         SELECT table_schema, table_name
         FROM information_schema.tables
         WHERE table_schema = 'import'
     LOOP
-        RAISE NOTICE 'spatial filtering on table: %.%', rec.table_schema, rec.table_name;
-        EXECUTE format('WITH sf AS (SELECT ST_UNION(ST_Transform(ST_Buffer(ST_Transform(geom, 25833), -50), 4326)) AS geom FROM meta.spatialfilter)
-                        DELETE FROM %I.%I AS a
-                        USING sf AS s WHERE NOT ST_INTERSECTS(a.geom, s.geom);',
-            rec.table_schema, rec.table_name);
+        RAISE NOTICE 'Spatial filtering on table: %.%', rec.table_schema, rec.table_name;
+
+        EXECUTE format('DELETE FROM %I.%I AS a WHERE NOT ST_Intersects(a.geom, $1);',
+                       rec.table_schema, rec.table_name) USING spatial_filter;
     END LOOP;
 END;
-$$
+$$;
+
+
