@@ -2215,12 +2215,13 @@ GROUP BY
 ORDER BY
   b.name
 ;
-ALTER TABLE boundaries_stats ADD COLUMN id SERIAL PRIMARY KEY;
-CREATE UNIQUE INDEX ON boundaries_stats (id);
-DROP INDEX IF EXISTS boundaries_stats_geom_idx;
-CREATE INDEX boundaries_stats_geom_idx ON boundaries_stats USING gist (geom);
 ALTER TABLE boundaries_stats ADD COLUMN IF NOT EXISTS done_percent numeric;
 UPDATE boundaries_stats SET done_percent = ROUND((street_side_km + lane_km) / NULLIF(sum_km, 0) * 100, 1);
+ALTER TABLE boundaries_stats ADD COLUMN id SERIAL PRIMARY KEY;
+CREATE UNIQUE INDEX ON boundaries_stats (id);
+CREATE INDEX IF NOT EXISTS boundaries_stats_geom_idx ON boundaries_stats USING gist (geom);
+CREATE INDEX IF NOT EXISTS boundaries_stats_admin_level_idx ON processing.boundaries_stats(admin_level);
+
 
 DROP TABLE IF EXISTS boundaries_stats_short;
 CREATE TABLE boundaries_stats_short AS

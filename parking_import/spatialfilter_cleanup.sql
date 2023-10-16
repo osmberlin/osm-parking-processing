@@ -33,5 +33,6 @@ CREATE TABLE meta.spatialfilter AS
 ;
 ALTER TABLE meta.spatialfilter ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON meta.spatialfilter (id);
-CREATE INDEX spatialfilter_geom_idx ON meta.spatialfilter USING gist (geom);
+CREATE INDEX IF NOT EXISTS spatialfilter_geom_idx ON meta.spatialfilter USING gist (geom);
+CREATE INDEX IF NOT EXISTS spatialfilter_name_idx ON meta.spatialfilter(name);
 DROP TABLE IF EXISTS spf;

@@ -18,25 +18,24 @@ AS $function$
             b.geom,
             ST_PointOnSurface(b.geom) geom_label,
             (
-                SELECT json_agg(st_asgeojson(b1.*)::json)
+                SELECT json_agg(ST_AsGeojson(b1.*)::json)
                 FROM
                     processing.boundaries_stats b1
                 WHERE
                     st_contains(
                         b.geom,
-                        st_pointonsurface(b1.geom)
+                        ST_PointOnSurface(b1.geom)
                     )
                     AND b1.admin_level > b.admin_level
             ) AS childs
         FROM
-            processing.boundaries_stats b,
-            meta.spatialfilter s
-        WHERE
+            processing.boundaries_stats b
+        	  JOIN meta.spatialfilter s ON ST_Intersects(b.geom, s.geom)
+    	  WHERE
             s.name = region
-            AND ST_Intersects(ST_Transform(ST_Buffer(ST_Transform(b.geom, 25833), -50), 4326), s.geom)
         ORDER BY b.admin_level, b.name
     )
-	SELECT json_build_object(
+SELECT json_build_object(
         'type', 'FeatureCollection',
         'license', 'ODbL 1.0, https://opendatacommons.org/licenses/odbl/',
         'attribution', 'OpenStreetMap, https://www.openstreetmap.org/copyright',
@@ -45,6 +44,6 @@ AS $function$
         'timestamp_export', (SELECT CURRENT_TIMESTAMP(0)),
 	      'timestamp_osm', (SELECT value FROM o2pmiddle.osm2pgsql_properties WHERE property = 'replication_timestamp'),
         'features', json_agg(st_asgeojson(features.*)::json)
-	)
-	FROM features;
+)
+FROM features;
 $function$;
