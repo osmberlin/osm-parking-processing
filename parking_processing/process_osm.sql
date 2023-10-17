@@ -1948,6 +1948,19 @@ CREATE UNIQUE INDEX ON pl_dev_geog (id);
 
 DROP TABLE IF EXISTS parking_segments;
 CREATE TABLE parking_segments AS
+WITH defval AS (
+  SELECT
+    5.2 vehicle_dist_para,
+    3.1 vehicle_dist_diag,
+    2.5 vehicle_dist_perp,
+    4.4 vehicle_length,
+    1.9 vehicle_width
+), dv AS (
+  SELECT
+    *,
+    sqrt(d.vehicle_width * 0.5 * d.vehicle_width) + sqrt(d.vehicle_length * 0.5 * d.vehicle_length) vehicle_diag_width
+  FROM defval d
+)
 SELECT
     osm_type,
     osm_id,
@@ -1962,7 +1975,11 @@ SELECT
     orientation,
     capacity_osm,
     "source:capacity_osm" source_capacity_osm,
-    capacity,
+    CASE
+      WHEN pl.orientation = 'parallel' AND ST_Length(pl.geog) > dv.vehicle_length THEN round((ST_Length(pl.geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
+      WHEN pl.orientation = 'diagonal' AND ST_Length(pl.geog) > dv.vehicle_diag_width THEN round((ST_Length(pl.geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
+      WHEN pl.orientation = 'perpendicular' AND ST_Length(pl.geog) > dv.vehicle_width THEN round((ST_Length(pl.geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
+    END capacity,
     "source:capacity" source_capacity,
     width,
     "offset",
@@ -1979,7 +1996,7 @@ SELECT
     --error_output,
     geog::geometry(LineString, 4326) geom,
     geog
-FROM pl_dev_geog
+FROM pl_dev_geog pl, dv
 WHERE
   ST_Length(geog) > 1.7
 ;
