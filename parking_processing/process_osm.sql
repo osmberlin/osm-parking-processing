@@ -1986,7 +1986,7 @@ SELECT
     ST_Length(geog) "length",
     ST_Length(geog) / COALESCE(capacity, 1) length_per_capacity,
 	CASE
-		WHEN position IN ('separate') THEN 'not_processed_yet'
+		--WHEN position IN ('separate') THEN 'not_processed_yet'
 	  WHEN position IN ('street_side', 'lane') THEN 'processed'
 		WHEN position IN ('no') THEN 'no_parking'
 		WHEN position NOT IN ('no','separate') AND capacity IS NULL THEN 'segment_too_small'
@@ -1999,6 +1999,7 @@ SELECT
 FROM pl_dev_geog pl, dv
 WHERE
   ST_Length(geog) > 1.7
+  AND position NOT IN ('separate')
 ;
 ALTER TABLE parking_segments ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON parking_segments (id);

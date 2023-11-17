@@ -48,5 +48,12 @@ WHERE
 # create geopandas dataframe directly from query
 gdf = gpd.read_postgis(sql=query, con=engine, geom_col='geom')
 
-# save geopandas dataframe to geopackage file
-gdf.to_file(args.output_file_name, driver='GPKG')
+output_file_path = args.output_file_name
+
+# check if file exists...
+if os.path.exists(output_file_path):
+    # if yes, remove it. we don't want to append data to an old file
+    os.remove(output_file_path)
+
+# export DataFrame to file
+gdf.to_file(output_file_path, driver='GPKG')
