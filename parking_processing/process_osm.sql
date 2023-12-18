@@ -1990,7 +1990,7 @@ SELECT
 	  WHEN position IN ('street_side', 'lane') THEN 'processed'
 		WHEN position IN ('no') THEN 'no_parking'
 		WHEN position NOT IN ('no','separate') AND capacity IS NULL THEN 'segment_too_small'
-		WHEN capacity IS NULL THEN 'data_missing'
+		WHEN capacity IS NULL OR position IS NULL THEN 'data_missing'
 		ELSE 'other'
 	END capacity_status,
     --error_output,
@@ -1999,7 +1999,7 @@ SELECT
 FROM pl_dev_geog pl, dv
 WHERE
   ST_Length(geog) > 1.7
-  AND position NOT IN ('separate')
+  AND position NOT IN ('separate') OR position IS NULL
 ;
 ALTER TABLE parking_segments ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON parking_segments (id);
