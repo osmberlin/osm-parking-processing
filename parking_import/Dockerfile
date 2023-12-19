@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     lua-dkjson \
     osmctools \
     osmium-tool \
-    postgresql-client-15 \
+    postgresql-client \
     pyosmium \
     python3-psycopg2 \
     osm2pgsql \

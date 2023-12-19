@@ -2,7 +2,7 @@ FROM debian:sid-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
-    postgresql-client-15 \
+    postgresql-client \
     gdal-bin \
     python3-gdal \
     python3-geopandas \
