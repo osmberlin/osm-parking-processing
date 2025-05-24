@@ -608,11 +608,11 @@ function osm2pgsql.process_way(object)
         p_amenity == "parking" or
         p_leisure == "parklet" or
         (p_leisure == "outdoor_seating" and "outdoor_seeting" == "parklet") or
-        (p_amenity == "bicycle_parking" and rev_amenity_position[object.tags["bicycle_parking:position"]]) or
-        (p_amenity == "motorcycle_parking" and (rev_amenity_position[object.tags["motorcycle_parking:position"]] or rev_amenity_position[object.tags["parking"]])) or
-        (p_amenity == "small_electric_vehicle_parking" and rev_amenity_position[object.tags["small_electric_vehicle_parking:position"]]) or
-        (p_amenity == "bicycle_rental" and rev_amenity_position[object.tags["bicycle_rental:position"]])
---        object.tags["traffic_calming"] == "kerb_extension" or
+        (p_amenity == "bicycle_parking" and (rev_amenity_position[object.tags["bicycle_parking:position"]] or rev_amenity_position[object.tags["position"]])) or
+        (p_amenity == "motorcycle_parking" and (rev_amenity_position[object.tags["motorcycle_parking:position"]] or rev_amenity_position[object.tags["position"]] or rev_amenity_position[object.tags["parking"]])) or
+        (p_amenity == "small_electric_vehicle_parking" and (rev_amenity_position[object.tags["small_electric_vehicle_parking:position"]] or rev_amenity_position[object.tags["position"]])) or
+        (p_amenity == "bicycle_rental" and (rev_amenity_position[object.tags["bicycle_rental:position"]] or rev_amenity_position[object.tags["position"]]))
+        -- object.tags["traffic_calming"] == "kerb_extension" or
     )
     then
         local geom = object:as_polygon()
@@ -1136,8 +1136,8 @@ function osm2pgsql.process_node(object)
 
     -- process parking objects and push them to db table
     local p_amenity = object.tags["amenity"]
-    if (p_amenity == "bicycle_parking" and rev_bicycle_parking_position[object.tags["bicycle_parking:position"]])
-            or p_amenity == "small_vehicle_parking"
+    if (p_amenity == "bicycle_parking" and (rev_bicycle_parking_position[object.tags["bicycle_parking:position"]] or rev_bicycle_parking_position[object.tags["position"]]))
+        or p_amenity == "small_vehicle_parking"
     then
         tables.amenity_parking_points:insert({
             amenity = p_amenity,
@@ -1145,9 +1145,8 @@ function osm2pgsql.process_node(object)
             capacity = parse_units(object.tags["capacity"]),
             bicycle = object.tags["bicycle"],
             small_electric_vehicle = object.tags["small_electric_vehicle"],
-            small_vehicle_parking_position = object.tags["small_vehicle_parking:position"],
             parking = object.tags["bicycle_parking"],
-            parking_position = object.tags["bicycle_parking:position"],
+            parking_position = object.tags["position"] or object.tags["bicycle_parking:position"],
             operator_type = object.tags["operator:type"],
             geom = object:as_point()
         })
@@ -1156,7 +1155,6 @@ function osm2pgsql.process_node(object)
 
     if object.tags["obstacle:parking"] == "yes"
     then
-        local obstacle_buffer =  obstacle_buffer(object)
 
         tables.obstacle_point:insert({
             advertising = object.tags["advertising"],
@@ -1213,4 +1211,3 @@ function osm2pgsql.process_relation(object)
 
 
 end
-
