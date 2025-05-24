@@ -1156,6 +1156,8 @@ function osm2pgsql.process_node(object)
     if object.tags["obstacle:parking"] == "yes"
     then
 
+        local obstacle_buffer =  obstacle_buffer(object)
+        
         tables.obstacle_point:insert({
             advertising = object.tags["advertising"],
             amenity = object.tags["amenity"],
