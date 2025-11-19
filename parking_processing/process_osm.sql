@@ -59,17 +59,23 @@ CREATE UNIQUE INDEX ON traffic_calming_points (id);
 
 
 -- insert highway=service into highways table when there are parking information
+-- NOTE: id is not included in INSERT list because it's a SERIAL PRIMARY KEY and will be auto-generated
+-- Including the id from service would cause PRIMARY KEY constraint violations
 INSERT INTO highways
-  (osm_type, osm_id, id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective)
+  (osm_type, osm_id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective)
 SELECT
-  osm_type, osm_id, id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective
+  osm_type, osm_id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective
 FROM
   service
 WHERE
   (parking_left_position IN ('lane', 'street_side') OR parking_right_position IN ('lane', 'street_side'))
   AND service IS DISTINCT FROM 'parking_aisle'
-  AND (parking_left_orientation IN ('diagonal', 'marked', 'parallel', 'perpendicular', 'separate', 'yes')
-  OR parking_right_orientation IN ('diagonal', 'marked', 'parallel', 'perpendicular', 'separate', 'yes'))
+  AND (
+    parking_left_orientation IN ('diagonal', 'marked', 'parallel', 'perpendicular', 'separate', 'yes')
+    OR parking_right_orientation IN ('diagonal', 'marked', 'parallel', 'perpendicular', 'separate', 'yes')
+    OR (parking_left_position IN ('lane', 'street_side') AND parking_left_orientation IS NULL)
+    OR (parking_right_position IN ('lane', 'street_side') AND parking_right_orientation IS NULL)
+  )
 ;
 
 
@@ -1913,26 +1919,16 @@ SELECT
     single.orientation orientation,
     single.capacity_osm capacity_osm,
     single."source:capacity_osm" "source:capacity_osm",
+    -- Kapazität wird immer basierend auf der Segmentlänge berechnet, nicht die ursprüngliche Gesamtkapazität verwenden
+    -- Dies stellt sicher, dass bei aufgeteilten Parkflächen jedes Segment die korrekte Kapazität erhält
     CASE
-      WHEN side = 'left' AND single.capacity IS NOT NULL AND single.capacity <> 0 THEN single.capacity
-      WHEN side = 'left' AND single.capacity IS NULL OR single.capacity = 0 THEN
-        CASE
-          WHEN single.orientation = 'parallel' AND ST_Length(single.simple_geog) > dv.vehicle_length THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
-          WHEN single.orientation = 'diagonal' AND ST_Length(single.simple_geog) > dv.vehicle_diag_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
-          WHEN single.orientation = 'perpendicular' AND ST_Length(single.simple_geog) > dv.vehicle_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
-        END
-      WHEN side = 'right' AND single.capacity IS NOT NULL AND single.capacity <> 0 THEN single.capacity
-      WHEN side = 'right' AND single.capacity IS NULL OR single.capacity = 0 THEN
-        CASE
-          WHEN single.orientation = 'parallel' AND ST_Length(single.simple_geog) > dv.vehicle_length THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
-          WHEN single.orientation = 'diagonal' AND ST_Length(single.simple_geog) > dv.vehicle_diag_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
-          WHEN single.orientation = 'perpendicular' AND ST_Length(single.simple_geog) > dv.vehicle_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
-        END
+      WHEN single.orientation = 'parallel' AND ST_Length(single.simple_geog) > dv.vehicle_length THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
+      WHEN single.orientation = 'diagonal' AND ST_Length(single.simple_geog) > dv.vehicle_diag_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
+      WHEN single.orientation = 'perpendicular' AND ST_Length(single.simple_geog) > dv.vehicle_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
+      ELSE 0
     END capacity,
-    CASE
-      WHEN single.capacity IS NOT NULL AND single.capacity <> 0 THEN single."source:capacity"
-      WHEN single.capacity IS NULL OR single.capacity = 0 THEN 'estimated'
-    END "source:capacity",
+    -- source:capacity bleibt 'estimated', da die Kapazität basierend auf Segmentlänge berechnet wird
+    'estimated' "source:capacity",
     single.width width,
     single."offset" "offset",
     single.geog single_geog,
@@ -1984,7 +1980,7 @@ SELECT
     width,
     "offset",
     ST_Length(geog) "length",
-    ST_Length(geog) / COALESCE(capacity, 1) length_per_capacity,
+    ST_Length(geog) / NULLIF(COALESCE(capacity, 1), 0) length_per_capacity,
 	CASE
 		--WHEN position IN ('separate') THEN 'not_processed_yet'
 	  WHEN position IN ('street_side', 'lane') THEN 'processed'
@@ -1999,7 +1995,7 @@ SELECT
 FROM pl_dev_geog pl, dv
 WHERE
   ST_Length(geog) > 1.7
-  AND position NOT IN ('separate') OR position IS NULL
+  AND (position NOT IN ('separate') OR position IS NULL)
 ;
 ALTER TABLE parking_segments ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON parking_segments (id);
@@ -2096,7 +2092,7 @@ WITH multi AS (
         ELSE degrees(ST_Azimuth(ST_Startpoint(ST_Transform(geog::geometry, 25832)), ST_EndPoint(ST_Transform(geog::geometry, 25832))))
       END angle,
       CASE
-        WHEN  1 / capacity BETWEEN 0 AND 1 THEN
+        WHEN capacity IS NOT NULL AND capacity > 0 AND 1 / capacity BETWEEN 0 AND 1 THEN
           ST_Multi(ST_LineInterpolatePoints(geog::geometry(LineString, 4326), 1 / capacity, true))::geometry(Multipoint, 4326)
         ELSE 'POINT EMPTY'::geometry
       END geom

@@ -690,6 +690,11 @@ function osm2pgsql.process_way(object)
     local p_left_capacity = nil --object:grab_tag('parking:left:capacity')
     local p_right_capacity = nil --object:grab_tag('parking:right:capacity')
 
+    local p_left_position = nil
+    local p_left_orientation = nil
+    local p_right_position = nil
+    local p_right_orientation = nil
+
     local p_condition_both = object.tags["parking:condition:both"]
     local p_condition_both_other = object.tags["parking:condition:both:other"]
     local p_condition_both_other_time = object.tags["parking:condition:both:other:time"]
