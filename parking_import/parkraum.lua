@@ -150,6 +150,26 @@ tables.obstacle_point = osm2pgsql.define_table({
     }
 })
 
+tables.obstacle_way = osm2pgsql.define_table({
+    name = "obstacle_way",
+    schema = import_schema,
+    ids = { type = 'any', id_column = 'osm_id', type_column = 'osm_type' },
+    columns = {
+        { column = 'id', sql_type = 'serial', create_only = true },
+        { column = 'advertising', type = 'text' },
+        { column = 'amenity', type = 'text' },
+        { column = 'barrier', type = 'text' },
+        { column = 'highway', type = 'text' },
+        { column = 'leisure', type = 'text' },
+        { column = 'man_made', type = 'text' },
+        { column = 'natural', type = 'text' },
+        { column = 'capacity', sql_type = 'numeric' },
+        { column = 'buffer', sql_type = 'numeric' },
+        { column = 'error_output', type = 'jsonb' },
+        { column = 'geom', type = 'linestring', projection = srid, not_null = true }
+    }
+})
+
 tables.area_highway = osm2pgsql.define_table({
     name = "area_highway",
     schema = import_schema,
@@ -572,19 +592,37 @@ function osm2pgsql.process_way(object)
     then
         local obstacle_buffer =  obstacle_buffer(object)
 
-        tables.obstacle_poly:insert({
-            advertising = object.tags["advertising"],
-            amenity = object.tags["amenity"],
-            barrier = object.tags["barrier"],
-            highway = object.tags["highway"],
-            leisure = object.tags["leisure"],
-            man_made = object.tags["man_made"],
-            natural = object.tags["natural"],
-            capacity = object.tags["capacity"],
-            buffer = obstacle_buffer,
-            error_output = object.tags["error_output"],
-            geom = object:as_polygon()
-        })
+        if object.is_closed then
+            -- Geschlossener Way = Polygon
+            tables.obstacle_poly:insert({
+                advertising = object.tags["advertising"],
+                amenity = object.tags["amenity"],
+                barrier = object.tags["barrier"],
+                highway = object.tags["highway"],
+                leisure = object.tags["leisure"],
+                man_made = object.tags["man_made"],
+                natural = object.tags["natural"],
+                capacity = object.tags["capacity"],
+                buffer = obstacle_buffer,
+                error_output = object.tags["error_output"],
+                geom = object:as_polygon()
+            })
+        else
+            -- Offener Way = Linie
+            tables.obstacle_way:insert({
+                advertising = object.tags["advertising"],
+                amenity = object.tags["amenity"],
+                barrier = object.tags["barrier"],
+                highway = object.tags["highway"],
+                leisure = object.tags["leisure"],
+                man_made = object.tags["man_made"],
+                natural = object.tags["natural"],
+                capacity = object.tags["capacity"],
+                buffer = obstacle_buffer,
+                error_output = object.tags["error_output"],
+                geom = object:as_linestring()
+            })
+        end
     end
 
     -- process public transport objects and push them to db table
@@ -607,7 +645,7 @@ function osm2pgsql.process_way(object)
     if object.is_closed and (
         p_amenity == "parking" or
         p_leisure == "parklet" or
-        (p_leisure == "outdoor_seating" and "outdoor_seeting" == "parklet") or
+        (p_leisure == "outdoor_seating" and object.tags["outdoor_seating"] == "parklet") or
         (p_amenity == "bicycle_parking" and (rev_amenity_position[object.tags["bicycle_parking:position"]] or rev_amenity_position[object.tags["position"]])) or
         (p_amenity == "motorcycle_parking" and (rev_amenity_position[object.tags["motorcycle_parking:position"]] or rev_amenity_position[object.tags["position"]] or rev_amenity_position[object.tags["parking"]])) or
         (p_amenity == "small_electric_vehicle_parking" and (rev_amenity_position[object.tags["small_electric_vehicle_parking:position"]] or rev_amenity_position[object.tags["position"]])) or
@@ -744,11 +782,22 @@ function osm2pgsql.process_way(object)
             if object.tags["parking:both:orientation"] ~= nil then
                 p_orientation = object.tags["parking:both:orientation"]
             else
-                table.insert(pl_error_output, {
-                    error = "pl01" .. side:sub(1),
-                    side = side:sub(1),
-                    msg = "Attribute 'parking:" .. side .. ":orientation' und 'parking:both:orientation' gleichzeitig vorhanden. "
-                })
+                -- Default: 'parallel' wenn position vorhanden ist
+                if p_position and (p_position == 'lane' or p_position == 'street_side') then
+                    p_orientation = 'parallel'
+                    table.insert(pl_error_output, {
+                        error = "pl02" .. side:sub(1),
+                        side = side:sub(1),
+                        msg = "Attribute 'parking:" .. side .. ":orientation' fehlt, verwende Default 'parallel'. "
+                    })
+                else
+                    -- Nur Fehler, wenn keine position vorhanden
+                    table.insert(pl_error_output, {
+                        error = "pl01" .. side:sub(1),
+                        side = side:sub(1),
+                        msg = "Attribute 'parking:" .. side .. ":orientation' und 'parking:both:orientation' fehlen. "
+                    })
+                end
             end
         else
             if object.tags["parking:both:orientation"] == nil then
