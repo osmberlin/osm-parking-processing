@@ -1610,6 +1610,8 @@ WHERE
   (c.crossing_buffer_marking IS NOT NULL
   OR c.crossing_kerb_extension IS NOT NULL
   OR c.highway IN ('traffic_signals', 'crossing') )
+ORDER BY
+  p.side, c.id, ST_Distance(c.geog, p.geog)
 ;
 ALTER TABLE ped_crossings ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON ped_crossings (id);
@@ -1976,7 +1978,7 @@ SELECT
   --p.error_output,
   ST_Difference(
     p.geog::geometry,
-    COALESCE(ug.unioned_geom, 'GEOMETRYCOLLECTION EMPTY'::geometry)
+    COALESCE(ug.unioned_geom, ST_SetSRID('GEOMETRYCOLLECTION EMPTY'::geometry, 4326))
   )::geography geog_diff
 FROM
   parking_lanes p
