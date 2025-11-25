@@ -35,6 +35,37 @@ tables.highways = osm2pgsql.define_table({
         { column = 'parking_right_capacity', sql_type = 'numeric' },
         { column = 'parking_left_source_capacity', type = 'text' },
         { column = 'parking_right_source_capacity', type = 'text' },
+        { column = 'parking_condition_left', type = 'text' },
+        { column = 'parking_condition_left_other', type = 'text' },
+        { column = 'parking_condition_right', type = 'text' },
+        { column = 'parking_condition_right_other', type = 'text' },
+        { column = 'parking_condition_left_other_time', type = 'text' },
+        { column = 'parking_condition_right_other_time', type = 'text' },
+        { column = 'parking_condition_left_default', type = 'text' },
+        { column = 'parking_condition_right_default', type = 'text' },
+        { column = 'parking_condition_left_time_interval', type = 'text' },
+        { column = 'parking_condition_right_time_interval', type = 'text' },
+        { column = 'parking_condition_left_maxstay', type = 'text' },
+        { column = 'parking_condition_right_maxstay', type = 'text' },
+        { column = 'parking_left_fee', type = 'text' },
+        { column = 'parking_left_fee_conditional', type = 'text' },
+        { column = 'parking_right_fee', type = 'text' },
+        { column = 'parking_right_fee_conditional', type = 'text' },
+        { column = 'parking_left_access', type = 'text' },
+        { column = 'parking_right_access', type = 'text' },
+        { column = 'parking_left_restriction', type = 'text' },
+        { column = 'parking_right_restriction', type = 'text' },
+        { column = 'parking_left_restriction_taxi', type = 'text' },
+        { column = 'parking_right_restriction_taxi', type = 'text' },
+        { column = 'parking_left_restriction_disabled', type = 'text' },
+        { column = 'parking_right_restriction_disabled', type = 'text' },
+        { column = 'parking_left_restriction_car_sharing', type = 'text' },
+        { column = 'parking_right_restriction_car_sharing', type = 'text' },
+        { column = 'parking_left_zone', type = 'text' },
+        { column = 'parking_right_zone', type = 'text' },
+        { column = 'motorcar', type = 'text' },
+        { column = 'private', type = 'text' },
+        { column = 'disabled', type = 'text' },
         { column = 'error_output', type = 'jsonb' },
         { column = 'geom', type = 'linestring', projection = srid, not_null = true }
     }
@@ -70,6 +101,37 @@ tables.service = osm2pgsql.define_table({
         { column = 'parking_right_capacity', sql_type = 'numeric' },
         { column = 'parking_left_source_capacity', type = 'text' },
         { column = 'parking_right_source_capacity', type = 'text' },
+        { column = 'parking_condition_left', type = 'text' },
+        { column = 'parking_condition_left_other', type = 'text' },
+        { column = 'parking_condition_right', type = 'text' },
+        { column = 'parking_condition_right_other', type = 'text' },
+        { column = 'parking_condition_left_other_time', type = 'text' },
+        { column = 'parking_condition_right_other_time', type = 'text' },
+        { column = 'parking_condition_left_default', type = 'text' },
+        { column = 'parking_condition_right_default', type = 'text' },
+        { column = 'parking_condition_left_time_interval', type = 'text' },
+        { column = 'parking_condition_right_time_interval', type = 'text' },
+        { column = 'parking_condition_left_maxstay', type = 'text' },
+        { column = 'parking_condition_right_maxstay', type = 'text' },
+        { column = 'parking_left_fee', type = 'text' },
+        { column = 'parking_left_fee_conditional', type = 'text' },
+        { column = 'parking_right_fee', type = 'text' },
+        { column = 'parking_right_fee_conditional', type = 'text' },
+        { column = 'parking_left_access', type = 'text' },
+        { column = 'parking_right_access', type = 'text' },
+        { column = 'parking_left_restriction', type = 'text' },
+        { column = 'parking_right_restriction', type = 'text' },
+        { column = 'parking_left_restriction_taxi', type = 'text' },
+        { column = 'parking_right_restriction_taxi', type = 'text' },
+        { column = 'parking_left_restriction_disabled', type = 'text' },
+        { column = 'parking_right_restriction_disabled', type = 'text' },
+        { column = 'parking_left_restriction_car_sharing', type = 'text' },
+        { column = 'parking_right_restriction_car_sharing', type = 'text' },
+        { column = 'parking_left_zone', type = 'text' },
+        { column = 'parking_right_zone', type = 'text' },
+        { column = 'motorcar', type = 'text' },
+        { column = 'private', type = 'text' },
+        { column = 'disabled', type = 'text' },
         { column = 'error_output', type = 'jsonb' },
         { column = 'geom', type = 'linestring', projection = srid, not_null = true }
     }
@@ -98,6 +160,9 @@ tables.parking_poly = osm2pgsql.define_table({
         { column = 'id', sql_type = 'serial', create_only = true },
         { column = 'amenity', type = 'text' },
         { column = 'access', type = 'text' },
+        { column = 'motorcar', type = 'text' },
+        { column = 'private', type = 'text' },
+        { column = 'disabled', type = 'text' },
         { column = 'capacity', sql_type = 'numeric' },
         { column = 'parking', type = 'text' },
         { column = 'building', type = 'text' },
@@ -187,6 +252,20 @@ tables.area_highway = osm2pgsql.define_table({
         { column = 'area', type = 'real' },
         { column = 'error_output', type = 'jsonb' },
         { column = 'geom', type = 'geometry', projection = srid, not_null = true }
+    }
+})
+
+tables.barrier_points = osm2pgsql.define_table({
+    name = "barrier_points",
+    schema = import_schema,
+    ids = { type = 'any', id_column = 'osm_id', type_column = 'osm_type' },
+    columns = {
+        { column = 'id', sql_type = 'serial', create_only = true },
+        { column = 'barrier', type = 'text' },
+        { column = 'bollard', type = 'text' },
+        { column = 'traffic_calming', type = 'text' },
+        { column = 'buffer', sql_type = 'numeric' },
+        { column = 'geom', type = 'point', projection = srid, not_null = true }
     }
 })
 
@@ -657,6 +736,9 @@ function osm2pgsql.process_way(object)
         tables.parking_poly:insert({
             amenity = p_amenity,
             access = object.tags["access"],
+            motorcar = object.tags["motorcar"],
+            private = object.tags["private"],
+            disabled = object.tags["disabled"],
             capacity = parse_units(object.tags["capacity"]),
             parking = object.tags["parking"],
             building = object.tags["building"],
@@ -740,6 +822,24 @@ function osm2pgsql.process_way(object)
     local p_condition_both_time_interval = object.tags["parking:condition:both:time_interval"]
     local p_condition_both_maxstay = object.tags["parking:condition:both:maxstay"]
     local p_both_capacity = object.tags["parking:both:capacity"]
+    
+    -- Zusätzliche Tags für condition_class Berechnung
+    local p_left_fee = nil
+    local p_left_fee_conditional = nil
+    local p_right_fee = nil
+    local p_right_fee_conditional = nil
+    local p_left_access = nil
+    local p_right_access = nil
+    local p_left_restriction = nil
+    local p_right_restriction = nil
+    local p_left_restriction_taxi = nil
+    local p_right_restriction_taxi = nil
+    local p_left_restriction_disabled = nil
+    local p_right_restriction_disabled = nil
+    local p_left_restriction_car_sharing = nil
+    local p_right_restriction_car_sharing = nil
+    local p_left_zone = nil
+    local p_right_zone = nil
 
     local constr = object.tags["construction"]
 
@@ -778,40 +878,64 @@ function osm2pgsql.process_way(object)
             end
         end
 
-        if object.tags["parking:" .. side .. ":orientation"] == nil then
-            if object.tags["parking:both:orientation"] ~= nil then
-                p_orientation = object.tags["parking:both:orientation"]
-            else
-                -- Default: 'parallel' wenn position vorhanden ist
-                if p_position and (p_position == 'lane' or p_position == 'street_side') then
-                    p_orientation = 'parallel'
-                    table.insert(pl_error_output, {
-                        error = "pl02" .. side:sub(1),
-                        side = side:sub(1),
-                        msg = "Attribute 'parking:" .. side .. ":orientation' fehlt, verwende Default 'parallel'. "
-                    })
+        -- Issue #77: Wenn parking=separate, dann alle anderen parking-Attribute ignorieren
+        -- Separate Parkflächen werden separat prozessiert und sollten nicht als Parkstreifen behandelt werden
+        if p_position == 'separate' then
+            p_orientation = nil
+            -- Weitere parking-Attribute werden nicht verarbeitet, da separate Flächen separat behandelt werden
+            -- Setze alle parking-Variablen auf nil/leer, damit sie nicht in die Datenbank geschrieben werden
+            p_condition_side_default = nil
+            p_condition_side = nil
+            p_condition = nil
+            cond = nil
+            p_condition_other_time = nil
+            p_condition_other = nil
+            parking_side_width = nil
+            parking_side_width_carriageway = nil
+            p_capacity = nil
+            p_source_capacity = nil
+            -- Überspringe die weitere Verarbeitung der parking-Attribute für separate
+            -- Die position wird trotzdem gespeichert, damit separate Flächen identifiziert werden können
+        else
+            -- Normale Verarbeitung für nicht-separate Parkpositionen
+            if object.tags["parking:" .. side .. ":orientation"] == nil then
+                if object.tags["parking:both:orientation"] ~= nil then
+                    p_orientation = object.tags["parking:both:orientation"]
                 else
-                    -- Nur Fehler, wenn keine position vorhanden
+                    -- Default: 'parallel' wenn position vorhanden ist
+                    if p_position and (p_position == 'lane' or p_position == 'street_side') then
+                        p_orientation = 'parallel'
+                        table.insert(pl_error_output, {
+                            error = "pl02" .. side:sub(1),
+                            side = side:sub(1),
+                            msg = "Attribute 'parking:" .. side .. ":orientation' fehlt, verwende Default 'parallel'. "
+                        })
+                    else
+                        -- Nur Fehler, wenn keine position vorhanden
+                        table.insert(pl_error_output, {
+                            error = "pl01" .. side:sub(1),
+                            side = side:sub(1),
+                            msg = "Attribute 'parking:" .. side .. ":orientation' und 'parking:both:orientation' fehlen. "
+                        })
+                    end
+                end
+            else
+                if object.tags["parking:both:orientation"] == nil then
+                    p_orientation = object.tags["parking:" .. side .. ":orientation"]
+                else
+                    -- Konflikt: beide Tags vorhanden, verwende seiten-spezifischen Wert (Priorität)
+                    p_orientation = object.tags["parking:" .. side .. ":orientation"]
                     table.insert(pl_error_output, {
                         error = "pl01" .. side:sub(1),
                         side = side:sub(1),
-                        msg = "Attribute 'parking:" .. side .. ":orientation' und 'parking:both:orientation' fehlen. "
+                        msg = "Attribute 'parking:" .. side .. ":orientation' und 'parking:both:orientation' gleichzeitig vorhanden. Verwende seiten-spezifischen Wert. "
                     })
                 end
             end
-        else
-            if object.tags["parking:both:orientation"] == nil then
-                p_orientation = object.tags["parking:" .. side .. ":orientation"]
-            else
-                table.insert(pl_error_output, {
-                    error = "pl01" .. side:sub(1),
-                    side = side:sub(1),
-                    msg = "Attribute 'parking:" .. side .. ":orientation' und 'parking:both:orientation' gleichzeitig vorhanden. "
-                })
-            end
         end
 
-        if p_position then
+        -- Issue #77: Separate Parkflächen werden nicht als Parkstreifen verarbeitet
+        if p_position and p_position ~= 'separate' then
             -- Parkstreifen-Regeln (und Abweichungen) ermitteln (kostenfrei, Ticket, Halte-/Parkverbote zu bestimmten Zeiten...)
             p_condition_side_default = object.tags["parking:condition:" .. side .. ":default"]
 
@@ -974,6 +1098,80 @@ function osm2pgsql.process_way(object)
             end
         end
 
+        -- Zusätzliche Tags für condition_class lesen
+        -- Issue #77: Separate Parkflächen werden nicht als Parkstreifen verarbeitet
+        if p_position and p_position ~= 'separate' then
+            local p_side_fee = object.tags["parking:" .. side .. ":fee"]
+            local p_side_fee_conditional = object.tags["parking:" .. side .. ":fee:conditional"]
+            local p_side_access = object.tags["parking:" .. side .. ":access"]
+            local p_side_restriction = object.tags["parking:" .. side .. ":restriction"]
+            local p_side_restriction_taxi = object.tags["parking:" .. side .. ":restriction:taxi"]
+            local p_side_restriction_disabled = object.tags["parking:" .. side .. ":restriction:disabled"]
+            local p_side_restriction_car_sharing = object.tags["parking:" .. side .. ":restriction:car_sharing"]
+            local p_side_zone = object.tags["parking:" .. side .. ":zone"]
+            -- Issue #91: parking:*:taxi Tag lesen (neben restriction:taxi)
+            local p_side_taxi = object.tags["parking:" .. side .. ":taxi"]
+            
+            -- Fallback auf both-Tags wenn side-Tags nicht vorhanden
+            if p_side_fee == nil then p_side_fee = object.tags["parking:both:fee"] end
+            if p_side_fee_conditional == nil then p_side_fee_conditional = object.tags["parking:both:fee:conditional"] end
+            if p_side_access == nil then p_side_access = object.tags["parking:both:access"] end
+            if p_side_restriction == nil then p_side_restriction = object.tags["parking:both:restriction"] end
+            if p_side_restriction_taxi == nil then p_side_restriction_taxi = object.tags["parking:both:restriction:taxi"] end
+            if p_side_restriction_disabled == nil then p_side_restriction_disabled = object.tags["parking:both:restriction:disabled"] end
+            if p_side_restriction_car_sharing == nil then p_side_restriction_car_sharing = object.tags["parking:both:restriction:car_sharing"] end
+            if p_side_zone == nil then p_side_zone = object.tags["parking:both:zone"] end
+            -- Issue #91: Fallback für parking:*:taxi
+            if p_side_taxi == nil then p_side_taxi = object.tags["parking:both:taxi"] end
+            
+            if side == "left" then
+                p_left_fee = p_side_fee
+                p_left_fee_conditional = p_side_fee_conditional
+                p_left_access = p_side_access
+                p_left_restriction = p_side_restriction
+                p_left_restriction_taxi = p_side_restriction_taxi
+                p_left_restriction_disabled = p_side_restriction_disabled
+                p_left_restriction_car_sharing = p_side_restriction_car_sharing
+                p_left_zone = p_side_zone
+            else
+                p_right_fee = p_side_fee
+                p_right_fee_conditional = p_side_fee_conditional
+                p_right_access = p_side_access
+                p_right_restriction = p_side_restriction
+                p_right_restriction_taxi = p_side_restriction_taxi
+                p_right_restriction_disabled = p_side_restriction_disabled
+                p_right_restriction_car_sharing = p_side_restriction_car_sharing
+                p_right_zone = p_side_zone
+            end
+            
+            -- Issue #91: Taxistand zählt nicht als Parkverbot
+            -- Prüfe, ob Parkverbot vorliegt (access=no, taxi=designated oder restriction:taxi vorhanden)
+            -- Überschreibe orientation auf 'no_parking' und position auf 'no'
+            if p_side_access == 'no' or p_side_taxi == 'designated' or p_side_restriction_taxi ~= nil then
+                p_orientation = 'no_parking'
+                p_position = 'no'
+            end
+        else
+            -- Issue #91: Auch außerhalb des if-Blocks prüfen, ob Parkverbot vorliegt
+            -- Falls p_position nicht gesetzt ist, aber access=no oder taxi=designated vorhanden ist
+            local p_side_access_check = object.tags["parking:" .. side .. ":access"]
+            local p_side_taxi_check = object.tags["parking:" .. side .. ":taxi"]
+            local p_side_restriction_taxi_check = object.tags["parking:" .. side .. ":restriction:taxi"]
+            
+            -- Fallback auf both-Tags
+            if p_side_access_check == nil then p_side_access_check = object.tags["parking:both:access"] end
+            if p_side_taxi_check == nil then p_side_taxi_check = object.tags["parking:both:taxi"] end
+            if p_side_restriction_taxi_check == nil then p_side_restriction_taxi_check = object.tags["parking:both:restriction:taxi"] end
+            
+            -- Wenn Parkverbot vorliegt, setze orientation und position
+            if p_side_access_check == 'no' or p_side_taxi_check == 'designated' or p_side_restriction_taxi_check ~= nil then
+                p_orientation = 'no_parking'
+                if p_position == nil or (p_position ~= 'separate' and p_position ~= 'no') then
+                    p_position = 'no'
+                end
+            end
+        end
+        
         if side == "left" then
             p_left_orientation = p_orientation
             p_left_position = p_position
@@ -1038,12 +1236,51 @@ function osm2pgsql.process_way(object)
     width_proc = width
 
     local width_effective = 0
-    --print(name, type, width, p_left_width_carriageway, p_right_width_carriageway)
-    --print(object.id, name, type, p_left_orientation, p_right_orientation, p_left_position, p_right_position)
-    if (parse_units(p_left_width_carriageway) ~= nil and parse_units(p_right_width_carriageway) ~= nil and parse_units(width) ~= nil ) then
-        width_effective = tonumber(parse_units(width)) - tonumber(parse_units(p_left_width_carriageway)) - tonumber(parse_units(p_right_width_carriageway))
-        p_left_offset = (width_effective / 2) + tonumber(parse_units(p_left_width_carriageway))
-        p_right_offset = -(width_effective / 2) - tonumber(parse_units(p_right_width_carriageway))
+    
+    -- Offset-Berechnung für einspurige Einbahnstraßen
+    -- Kriterien: oneway=true, lanes=1 (oder nil), position mit width_carriageway > 0
+    local oneway_tag = object.tags["oneway"]
+    local oneway_bool = (oneway_tag == "yes" or oneway_tag == "true" or oneway_tag == "1" or oneway_tag == true)
+    local lanes_num = parse_units(object.tags["lanes"])
+    local lanes_is_one = (lanes_num == 1 or lanes_num == nil)
+    
+    -- Unterstützte Positionen
+    local supported_positions = {
+        ["lane"] = true,
+        ["street_side"] = true,
+        ["on_kerb"] = true,
+        ["half_on_kerb"] = true,
+        ["yes"] = true,
+        ["shoulder"] = true
+    }
+    
+    if oneway_bool and lanes_is_one and 
+       supported_positions[p_left_position] and
+       parse_units(p_left_width_carriageway) ~= nil and 
+       tonumber(parse_units(p_left_width_carriageway)) > 0 then
+        p_left_offset = tonumber(parse_units(p_left_width_carriageway)) + 0.5
+    elseif width ~= nil and parse_units(width) ~= nil then
+        local width_val = tonumber(parse_units(width))
+        local left_wc = parse_units(p_left_width_carriageway) or 0
+        local right_wc = parse_units(p_right_width_carriageway) or 0
+        width_effective = width_val - tonumber(left_wc) - tonumber(right_wc)
+        p_left_offset = (width_effective / 2) + tonumber(left_wc)
+    end
+    
+    if oneway_bool and lanes_is_one and 
+       supported_positions[p_right_position] and
+       parse_units(p_right_width_carriageway) ~= nil and 
+       tonumber(parse_units(p_right_width_carriageway)) > 0 then
+        p_right_offset = -(tonumber(parse_units(p_right_width_carriageway)) + 0.5)
+    elseif width ~= nil and parse_units(width) ~= nil then
+        if width_effective == 0 then
+            local width_val = tonumber(parse_units(width))
+            local left_wc = parse_units(p_left_width_carriageway) or 0
+            local right_wc = parse_units(p_right_width_carriageway) or 0
+            width_effective = width_val - tonumber(left_wc) - tonumber(right_wc)
+        end
+        local right_wc = parse_units(p_right_width_carriageway) or 0
+        p_right_offset = -(width_effective / 2) - tonumber(right_wc)
     end
 
     if highway_types[type] then
@@ -1085,6 +1322,25 @@ function osm2pgsql.process_way(object)
             parking_right_capacity = p_right_capacity,
             parking_left_source_capacity = p_left_source_capacity,
             parking_right_source_capacity = p_right_source_capacity,
+            parking_left_fee = p_left_fee,
+            parking_left_fee_conditional = p_left_fee_conditional,
+            parking_right_fee = p_right_fee,
+            parking_right_fee_conditional = p_right_fee_conditional,
+            parking_left_access = p_left_access,
+            parking_right_access = p_right_access,
+            parking_left_restriction = p_left_restriction,
+            parking_right_restriction = p_right_restriction,
+            parking_left_restriction_taxi = p_left_restriction_taxi,
+            parking_right_restriction_taxi = p_right_restriction_taxi,
+            parking_left_restriction_disabled = p_left_restriction_disabled,
+            parking_right_restriction_disabled = p_right_restriction_disabled,
+            parking_left_restriction_car_sharing = p_left_restriction_car_sharing,
+            parking_right_restriction_car_sharing = p_right_restriction_car_sharing,
+            parking_left_zone = p_left_zone,
+            parking_right_zone = p_right_zone,
+            motorcar = object.tags["motorcar"],
+            private = object.tags["private"],
+            disabled = object.tags["disabled"],
             geom = object:as_linestring()
         }
 
@@ -1128,6 +1384,25 @@ function osm2pgsql.process_way(object)
             parking_right_capacity = p_right_capacity,
             parking_left_source_capacity = p_left_source_capacity,
             parking_right_source_capacity = p_right_source_capacity,
+            parking_left_fee = p_left_fee,
+            parking_left_fee_conditional = p_left_fee_conditional,
+            parking_right_fee = p_right_fee,
+            parking_right_fee_conditional = p_right_fee_conditional,
+            parking_left_access = p_left_access,
+            parking_right_access = p_right_access,
+            parking_left_restriction = p_left_restriction,
+            parking_right_restriction = p_right_restriction,
+            parking_left_restriction_taxi = p_left_restriction_taxi,
+            parking_right_restriction_taxi = p_right_restriction_taxi,
+            parking_left_restriction_disabled = p_left_restriction_disabled,
+            parking_right_restriction_disabled = p_right_restriction_disabled,
+            parking_left_restriction_car_sharing = p_left_restriction_car_sharing,
+            parking_right_restriction_car_sharing = p_right_restriction_car_sharing,
+            parking_left_zone = p_left_zone,
+            parking_right_zone = p_right_zone,
+            motorcar = object.tags["motorcar"],
+            private = object.tags["private"],
+            disabled = object.tags["disabled"],
             geom = object:as_linestring()
         }
     end
@@ -1223,6 +1498,20 @@ function osm2pgsql.process_node(object)
             capacity = parse_units(object.tags["capacity"]),
             buffer = obstacle_buffer,
             error_output = object.tags["error_output"],
+            geom = object:as_point()
+        })
+    end
+
+    -- Importiere barrier=bollard Nodes in barrier_points (nur wenn obstacle:parking fehlt/undefined)
+    -- Poller MIT obstacle:parking=yes werden bereits in obstacle_point importiert
+    if object.tags["barrier"] == "bollard" and object.tags["obstacle:parking"] == nil then
+        local buffer_bollard = 0.5  -- vergrößerter Buffer
+        
+        tables.barrier_points:insert({
+            barrier = object.tags["barrier"],
+            bollard = object.tags["bollard"],
+            traffic_calming = object.tags["traffic_calming"],
+            buffer = buffer_bollard,
             geom = object:as_point()
         })
     end

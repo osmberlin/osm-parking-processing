@@ -50,6 +50,8 @@ CREATE UNIQUE INDEX ON highways (id);
 
 CREATE TABLE obstacle_point AS SELECT * FROM import.obstacle_point;
 CREATE UNIQUE INDEX ON obstacle_point (id);
+CREATE INDEX IF NOT EXISTS obstacle_point_geog_idx ON obstacle_point USING gist ((geom::geography));
+CREATE INDEX IF NOT EXISTS obstacle_point_geog_idx ON processing.obstacle_point USING gist ((geom::geography));
 
 CREATE TABLE obstacle_way AS SELECT * FROM import.obstacle_way;
 CREATE UNIQUE INDEX ON obstacle_way (id);
@@ -75,9 +77,9 @@ CREATE UNIQUE INDEX ON traffic_calming_points (id);
 -- NOTE: id is not included in INSERT list because it's a SERIAL PRIMARY KEY and will be auto-generated
 -- Including the id from service would cause PRIMARY KEY constraint violations
 INSERT INTO highways
-  (osm_type, osm_id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective)
+  (osm_type, osm_id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective, motorcar, private, disabled)
 SELECT
-  osm_type, osm_id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective
+  osm_type, osm_id, type, geom, surface, name, oneway, operator_type, parking_left_orientation, parking_left_offset, parking_left_position, parking_left_width, parking_left_width_carriageway, parking_right_orientation, parking_right_offset, parking_right_position, parking_right_width, parking_right_width_carriageway, parking_width_proc, parking_width_proc_effective, motorcar, private, disabled
 FROM
   service
 WHERE
@@ -156,8 +158,26 @@ UPDATE parking_poly SET
     ELSE capacity
   END;
 
+-- Issue #86: Attribut für Art des Parkplatzes (öffentlich/kunden/anwohner)
+ALTER TABLE parking_poly ADD COLUMN IF NOT EXISTS parking_access_type text;
+UPDATE parking_poly SET parking_access_type = CASE
+    -- Öffentlicher Parkplatz: access=yes ODER motorcar=yes|designated (auch wenn access=no)
+    WHEN access = 'yes' OR motorcar IN ('yes', 'designated') THEN 'public'
+    -- Anwohnerparkplatz: access=private + private=residents
+    WHEN access = 'private' AND private = 'residents' THEN 'residents'
+    -- Kundenparkplatz: access=customers
+    WHEN access = 'customers' THEN 'customers'
+    -- Mitarbeiterparkplatz: access=private + private=employees
+    WHEN access = 'private' AND private = 'employees' THEN 'employees'
+    -- Gewerbeparkplatz: access=private + private=commercial
+    WHEN access = 'private' AND private = 'commercial' THEN 'commercial'
+    -- Sonstiger/Unbestimmter Parkplatz: alles andere
+    ELSE 'other'
+END;
+
 ALTER TABLE buffer_area_highway ADD COLUMN IF NOT EXISTS geog geography(Polygon, 4326);
-UPDATE buffer_area_highway SET geog = ST_Buffer(geog, 2, 'join=bevel');
+UPDATE buffer_area_highway SET geog = geom::geography;
+UPDATE buffer_area_highway SET geog = ST_Buffer(geog, 0.5, 'join=bevel');
 DROP INDEX IF EXISTS buffer_area_highway_geog_idx;
 CREATE INDEX buffer_area_highway_geog_idx ON buffer_area_highway USING gist (geog);
 
@@ -175,6 +195,7 @@ CREATE TABLE parking_poly_label AS
         building,
         operator_type,
         parking_orientation,
+        parking_access_type,
         area,
         (ST_PointOnSurface(geom))::geometry(Point,4326) geom
     FROM
@@ -1107,6 +1128,51 @@ SELECT
   CASE WHEN v.side = 'left' THEN a.parking_left_offset
        WHEN v.side = 'right' THEN a.parking_right_offset
   END "offset",
+  CASE WHEN v.side = 'left' THEN a.parking_condition_left
+       WHEN v.side = 'right' THEN a.parking_condition_right
+  END parking_condition,
+  CASE WHEN v.side = 'left' THEN a.parking_condition_left_other
+       WHEN v.side = 'right' THEN a.parking_condition_right_other
+  END parking_condition_other,
+  CASE WHEN v.side = 'left' THEN a.parking_condition_left_other_time
+       WHEN v.side = 'right' THEN a.parking_condition_right_other_time
+  END parking_condition_other_time,
+  CASE WHEN v.side = 'left' THEN a.parking_condition_left_default
+       WHEN v.side = 'right' THEN a.parking_condition_right_default
+  END parking_condition_default,
+  CASE WHEN v.side = 'left' THEN a.parking_condition_left_time_interval
+       WHEN v.side = 'right' THEN a.parking_condition_right_time_interval
+  END parking_condition_time_interval,
+  CASE WHEN v.side = 'left' THEN a.parking_condition_left_maxstay
+       WHEN v.side = 'right' THEN a.parking_condition_right_maxstay
+  END parking_condition_maxstay,
+  CASE WHEN v.side = 'left' THEN a.parking_left_fee
+       WHEN v.side = 'right' THEN a.parking_right_fee
+  END fee,
+  CASE WHEN v.side = 'left' THEN a.parking_left_fee_conditional
+       WHEN v.side = 'right' THEN a.parking_right_fee_conditional
+  END fee_conditional,
+  CASE WHEN v.side = 'left' THEN a.parking_left_access
+       WHEN v.side = 'right' THEN a.parking_right_access
+  END access,
+  CASE WHEN v.side = 'left' THEN a.parking_left_restriction
+       WHEN v.side = 'right' THEN a.parking_right_restriction
+  END restriction,
+  CASE WHEN v.side = 'left' THEN a.parking_left_restriction_taxi
+       WHEN v.side = 'right' THEN a.parking_right_restriction_taxi
+  END restriction_taxi,
+  CASE WHEN v.side = 'left' THEN a.parking_left_restriction_disabled
+       WHEN v.side = 'right' THEN a.parking_right_restriction_disabled
+  END restriction_disabled,
+  CASE WHEN v.side = 'left' THEN a.parking_left_restriction_car_sharing
+       WHEN v.side = 'right' THEN a.parking_right_restriction_car_sharing
+  END restriction_car_sharing,
+  CASE WHEN v.side = 'left' THEN a.parking_left_zone
+       WHEN v.side = 'right' THEN a.parking_right_zone
+  END zone,
+  a.motorcar,
+  a.private,
+  a.disabled,
   CASE
     -- before offsetting we cut out all separated parking lanes
     WHEN v.side IN ('left') THEN
@@ -1114,7 +1180,7 @@ SELECT
         ST_OffsetCurve(
           ST_Transform(
             ST_Difference(
-              a.geog::geometry,
+              ST_SetSRID(a.geog::geometry, 4326),
               ST_SetSRID(COALESCE(ST_Buffer(s.geog, 0.2, 'endcap=flat'), 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
             ),
             25833
@@ -1127,7 +1193,7 @@ SELECT
         ST_OffsetCurve(
           ST_Transform(
             ST_Difference(
-              a.geog::geometry,
+              ST_SetSRID(a.geog::geometry, 4326),
               ST_SetSRID(COALESCE(ST_Buffer(s.geog, 0.2, 'endcap=flat'), 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
             ),
             25833
@@ -1161,6 +1227,23 @@ SELECT
   j."source:capacity",
   0 width,
   j."offset",
+  NULL parking_condition,
+  NULL parking_condition_other,
+  NULL parking_condition_other_time,
+  NULL parking_condition_default,
+  NULL parking_condition_time_interval,
+  NULL parking_condition_maxstay,
+  NULL fee,
+  NULL fee_conditional,
+  NULL access,
+  NULL restriction,
+  NULL restriction_taxi,
+  NULL restriction_disabled,
+  NULL restriction_car_sharing,
+  NULL zone,
+  NULL motorcar,
+  NULL private,
+  NULL disabled,
   ST_Transform(j.geom, 4326)::geography geog
   --NULL error_output
 FROM
@@ -1194,6 +1277,23 @@ SELECT
   "source:capacity",
   width,
   "offset",
+  parking_condition,
+  parking_condition_other,
+  parking_condition_other_time,
+  parking_condition_default,
+  parking_condition_time_interval,
+  parking_condition_maxstay,
+  fee,
+  fee_conditional,
+  access,
+  restriction,
+  restriction_taxi,
+  restriction_disabled,
+  restriction_car_sharing,
+  zone,
+  motorcar,
+  private,
+  disabled,
   --error_output,
   (ST_Multi(ST_Union(geog::geometry)))::geometry(MultiLineString, 4326) geom,
   ST_Union(geog::geometry)::geography geog
@@ -1216,7 +1316,24 @@ GROUP BY
   capacity,
   "source:capacity",
   width,
-  "offset"
+  "offset",
+  parking_condition,
+  parking_condition_other,
+  parking_condition_other_time,
+  parking_condition_default,
+  parking_condition_time_interval,
+  parking_condition_maxstay,
+  fee,
+  fee_conditional,
+  access,
+  restriction,
+  restriction_taxi,
+  restriction_disabled,
+  restriction_car_sharing,
+  zone,
+  motorcar,
+  private,
+  disabled
   --error_output
 ;
 ALTER TABLE parking_lanes ADD COLUMN id SERIAL PRIMARY KEY;
@@ -1880,38 +1997,141 @@ CREATE INDEX buffer_footways_crossing_geog_idx ON buffer_footways_crossing USING
 DROP TABLE IF EXISTS buffer_amenity_parking_poly;
 CREATE TABLE buffer_amenity_parking_poly AS
 SELECT
-  p.id,
-  ST_Union(p.geog::geometry)::geography geog,
-  ST_Multi((ST_Union(p.geog::geometry)))::geometry(MULTIPOLYGON, 4326) geom_buffer
+  pl.id,
+  ST_Buffer(ST_Union(p.geog::geometry)::geography, 0.5)::geography geog,
+  ST_Multi((ST_Union(p.geog::geometry)))::geometry(MULTIPOLYGON, 4326) geom_buffer,
+  ST_Buffer(ST_Union(p.geog::geometry)::geography, 0.5)::geography geog_buffer
 FROM
   parking_poly p
+  -- JOIN mit parking_lanes (analog zu buffer_highways)
+  JOIN parking_lanes pl ON 
+    ST_Intersects(ST_Buffer(p.geog, 0.5), pl.geog)
 WHERE
-    -- Alle Objekte, die in parkraum.lua mit relevanten Positionen importiert wurden
-    -- Die Position-Filterung erfolgt bereits beim Import (parkraum.lua Zeilen 649-652)
-    -- Unterstützte Positionen: lane, street_side, shoulder, kerb_extension
-    p.amenity IN ('bicycle_parking', 'motorcycle_parking', 'small_electric_vehicle_parking', 'bicycle_rental')
+  -- Alle Objekte, die in parkraum.lua mit relevanten Positionen importiert wurden
+  -- Die Position-Filterung erfolgt bereits beim Import (parkraum.lua Zeilen 649-652)
+  -- Unterstützte Positionen: lane, street_side, shoulder, kerb_extension
+  p.amenity IN ('bicycle_parking', 'motorcycle_parking', 'small_electric_vehicle_parking', 'bicycle_rental')
+  AND pl.geog && ST_Buffer(p.geog, 0.5)  -- Bounding Box Check für Performance
 GROUP BY
-  p.id
+  pl.id
 ;
 CREATE UNIQUE INDEX ON buffer_amenity_parking_poly (id);
 DROP INDEX IF EXISTS buffer_amenity_parking_poly_geog_idx;
 CREATE INDEX buffer_amenity_parking_poly_geog_idx ON buffer_amenity_parking_poly USING gist (geog);
-
--- Buffer für Fahrradständer-Polygone hinzufügen, um Snapping-Probleme zu vermeiden
-ALTER TABLE buffer_amenity_parking_poly ADD COLUMN IF NOT EXISTS geog_buffer geography;
-UPDATE buffer_amenity_parking_poly SET geog_buffer = ST_Buffer(geog, 0.5);
 DROP INDEX IF EXISTS buffer_amenity_parking_poly_geog_buffer_idx;
 CREATE INDEX buffer_amenity_parking_poly_geog_buffer_idx ON buffer_amenity_parking_poly USING gist (geog_buffer);
 
+-- Vorberechneter Buffer für parking_lanes (für pl_dev Query)
+-- Wird in pl_dev Query verwendet statt ST_Buffer(p.geog, 0.5) in WHERE-Klausel
+ALTER TABLE parking_lanes ADD COLUMN IF NOT EXISTS geog_buffer_05 geography;
+UPDATE parking_lanes SET geog_buffer_05 = ST_Buffer(geog, 0.5) WHERE geog_buffer_05 IS NULL;
+DROP INDEX IF EXISTS parking_lanes_geog_buffer_05_idx;
+CREATE INDEX parking_lanes_geog_buffer_05_idx ON parking_lanes USING gist (geog_buffer_05);
 
--- Optimierte pl_dev Tabelle: ST_Union statt verschachtelter ST_Difference (Performance-Optimierung)
--- Reduziert von 12 Ebenen verschachtelter ST_Difference auf 1 ST_Difference mit vorberechneter ST_Union
+
 DROP TABLE IF EXISTS pl_dev;
 CREATE TABLE pl_dev AS
-WITH unioned_geometries AS (
+WITH direct_obstacles AS (
+  -- Hindernisse die sich direkt mit der Parkfläche überschneiden
+  -- Für Punkte: Nur wenn Abstand zur Parklinie < 0.45m
+  -- Für Linien/Polygone: Immer
   SELECT
     p.id,
-    -- Verwende ST_Union als Aggregatfunktion über alle Geometrien
+    ST_Union(ST_SetSRID(obstacle.geog, 4326)::geometry) AS obstacles_geom
+  FROM
+    (SELECT * FROM parking_lanes WHERE ST_GeometryType(geom) IN ('ST_LineString', 'ST_MultiLineString')) p
+    LEFT JOIN highways h ON p.osm_id = h.osm_id AND p.osm_type = h.osm_type
+    JOIN buffer_obstacle obstacle ON 
+      ST_Intersects(p.geog, obstacle.geog)
+      -- Prüfe ob Obstacle auf der gleichen Seite der Straße liegt wie die Parklinie
+      AND (
+        (p.side = 'left' AND h.geog_buffer_left IS NOT NULL AND ST_Intersects(h.geog_buffer_left, obstacle.geog))
+        OR
+        (p.side = 'right' AND h.geog_buffer_right IS NOT NULL AND ST_Intersects(h.geog_buffer_right, obstacle.geog))
+        OR
+        (h.geog_buffer_left IS NULL AND h.geog_buffer_right IS NULL)
+      )
+    LEFT JOIN LATERAL (
+      SELECT op.*
+      FROM obstacle_point op
+      -- für Nutzung von Index
+      WHERE ST_DWithin(p.geog, op.geom::geography, 0.45)
+        AND ST_Distance(p.geog, op.geom::geography) < 0.45
+        AND ST_Intersects(
+          ST_Buffer(op.geom::geography, op.buffer)::geometry,
+          obstacle.geom_buffer
+        )
+    ) op ON true
+  GROUP BY p.id
+),
+snapped_obstacles AS (
+  -- Punkte die >= 0.45m von Parklinie entfernt sind - werden auf Parklinie gesnappt
+  SELECT
+    p.id,
+    ST_Union(
+      ST_Buffer(
+        ST_ClosestPoint(
+          ST_LineMerge(p.geom),
+          op.geom
+        )::geography,
+        op.buffer
+      )::geometry
+    ) AS obstacles_geom
+  FROM
+    (SELECT * FROM parking_lanes WHERE ST_GeometryType(geom) IN ('ST_LineString', 'ST_MultiLineString')) p
+    LEFT JOIN highways h ON p.osm_id = h.osm_id AND p.osm_type = h.osm_type
+    JOIN LATERAL (
+      SELECT op.*
+      FROM obstacle_point op
+      WHERE ST_DWithin(p.geog, op.geom::geography, 15.0)
+        AND ST_Distance(p.geog, op.geom::geography) >= 0.45
+    ) op ON true
+    -- Finde Hindernisse die zwischen Highway und Parkfläche liegen
+    JOIN buffer_obstacle obstacle ON 
+      ST_Intersects(
+        ST_Buffer(op.geom::geography, op.buffer)::geometry,
+        obstacle.geom_buffer
+      )
+      AND ST_DWithin(
+        h.geog, 
+        obstacle.geog, 
+        CASE 
+          WHEN p.side = 'left' THEN ABS(COALESCE(h.parking_left_offset, 0)) + 2.0
+          WHEN p.side = 'right' THEN ABS(COALESCE(h.parking_right_offset, 0)) + 2.0
+          ELSE ABS(COALESCE(p."offset", 0)) + 2.0
+        END
+      )
+      -- Prüfe ob Obstacle auf der gleichen Seite der Straße liegt wie die Parklinie
+      AND (
+        (p.side = 'left' AND h.geog_buffer_left IS NOT NULL AND ST_Intersects(h.geog_buffer_left, obstacle.geog))
+        OR
+        (p.side = 'right' AND h.geog_buffer_right IS NOT NULL AND ST_Intersects(h.geog_buffer_right, obstacle.geog))
+        OR
+        (h.geog_buffer_left IS NULL AND h.geog_buffer_right IS NULL)
+      )
+  GROUP BY p.id
+),
+obstacles_per_lane AS (
+  -- Sammle alle Hindernisse pro Parkfläche und vereinige sie
+  SELECT
+    p.id,
+    CASE 
+      WHEN direct_obs.obstacles_geom IS NOT NULL OR snapped_obs.obstacles_geom IS NOT NULL THEN 
+        ST_Union(
+          COALESCE(direct_obs.obstacles_geom, ST_SetSRID('GEOMETRYCOLLECTION EMPTY'::geometry, 4326)),
+          COALESCE(snapped_obs.obstacles_geom, ST_SetSRID('GEOMETRYCOLLECTION EMPTY'::geometry, 4326))
+        )
+      ELSE 
+        NULL
+    END AS obstacles_geom
+  FROM
+    parking_lanes p
+    LEFT JOIN direct_obstacles direct_obs ON p.id = direct_obs.id
+    LEFT JOIN snapped_obstacles snapped_obs ON p.id = snapped_obs.id
+),
+unioned_geometries AS (
+  SELECT
+    p.id,
     ST_Union(geoms.geom) AS unioned_geom
   FROM
     parking_lanes p
@@ -1921,14 +2141,16 @@ WITH unioned_geometries AS (
     LEFT JOIN buffer_kerb_intersections k ON p.id = k.id
     LEFT JOIN buffer_pt_bus b ON p.id = b.id
     LEFT JOIN buffer_pt_tram t ON p.id = t.id
-    LEFT JOIN buffer_highways hb ON p.id = hb.id
     LEFT JOIN buffer_amenity_parking_points bc ON p.id = bc.id
-    LEFT JOIN buffer_amenity_parking_poly bapp on ST_Intersects(ST_Buffer(p.geog, 0.5), bapp.geog_buffer)
+    -- OPTIMIERUNG: Vorberechneter Buffer statt ST_Buffer in WHERE + Bounding Box Check (&&) vor ST_Intersects
+    LEFT JOIN buffer_amenity_parking_poly bapp on p.geog_buffer_05 && bapp.geog_buffer AND ST_Intersects(p.geog_buffer_05, bapp.geog_buffer)
     LEFT JOIN buffer_footways_crossing fc ON p.id = fc.id
-    LEFT JOIN buffer_area_highway ah on ST_Intersects(p.geog, ah.geog)
-    LEFT JOIN buffer_obstacle obstacle on ST_Intersects(p.geog, obstacle.geog)
+    -- OPTIMIERUNG: Bounding Box Check (&&) vor ST_Intersects
+    LEFT JOIN buffer_area_highway ah on p.geog && ah.geog AND ST_Intersects(p.geog, ah.geog)
+    -- Verwende die voraggregierten Hindernisse
+    LEFT JOIN obstacles_per_lane opl ON p.id = opl.id
   CROSS JOIN LATERAL (
-    SELECT ST_SetSRID(COALESCE(obstacle.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry AS geom
+    SELECT ST_SetSRID(COALESCE(opl.obstacles_geom, 'GEOMETRYCOLLECTION EMPTY'::geometry), 4326)::geometry AS geom
     UNION ALL
     SELECT ST_SetSRID(COALESCE(ah.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
     UNION ALL
@@ -1949,8 +2171,6 @@ WITH unioned_geometries AS (
     SELECT ST_SetSRID(COALESCE(c.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
     UNION ALL
     SELECT ST_SetSRID(COALESCE(k.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
-    UNION ALL
-    SELECT ST_SetSRID(COALESCE(hb.geog, 'GEOMETRYCOLLECTION EMPTY'::geography), 4326)::geometry
   ) AS geoms(geom)
   WHERE geoms.geom IS NOT NULL AND NOT ST_IsEmpty(geoms.geom)
   GROUP BY p.id
@@ -1974,10 +2194,27 @@ SELECT
   p."source:capacity" "source:capacity",
   p.width width,
   p."offset" "offset",
+  p.parking_condition,
+  p.parking_condition_other,
+  p.parking_condition_other_time,
+  p.parking_condition_default,
+  p.parking_condition_time_interval,
+  p.parking_condition_maxstay,
+  p.fee,
+  p.fee_conditional,
+  p.access,
+  p.restriction,
+  p.restriction_taxi,
+  p.restriction_disabled,
+  p.restriction_car_sharing,
+  p.zone,
+  p.motorcar,
+  p.private,
+  p.disabled,
   p.geog geog,
   --p.error_output,
   ST_Difference(
-    p.geog::geometry,
+    ST_SetSRID(p.geog::geometry, 4326),
     COALESCE(ug.unioned_geom, ST_SetSRID('GEOMETRYCOLLECTION EMPTY'::geometry, 4326))
   )::geography geog_diff
 FROM
@@ -2027,23 +2264,42 @@ SELECT
     single."highway:width_proc:effective" "highway:width_proc:effective",
     single.surface surface,
     single.position position,
-    single.orientation orientation,
+    -- Issue #87: Wenn orientation fehlt, aber position vorhanden ist, verwende 'parallel' als Default
+    COALESCE(single.orientation, 
+      CASE WHEN single.position IN ('lane', 'street_side') THEN 'parallel' 
+           ELSE NULL 
+      END) orientation,
     single.capacity_osm capacity_osm,
     single."source:capacity_osm" "source:capacity_osm",
     -- Kapazität wird immer basierend auf der Segmentlänge berechnet, nicht die ursprüngliche Gesamtkapazität verwenden
     -- Dies stellt sicher, dass bei aufgeteilten Parkflächen jedes Segment die korrekte Kapazität erhält
     CASE
-      WHEN single.orientation = 'parallel' AND ST_Length(single.simple_geog) > dv.vehicle_length THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
-      WHEN single.orientation = 'diagonal' AND ST_Length(single.simple_geog) > dv.vehicle_diag_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
-      WHEN single.orientation = 'perpendicular' AND ST_Length(single.simple_geog) > dv.vehicle_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
-      -- Fallback: Wenn orientation NULL ist, aber position vorhanden, verwende parallel
-      WHEN single.orientation IS NULL AND single.position IN ('lane', 'street_side') AND ST_Length(single.simple_geog) > dv.vehicle_length THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
+      WHEN COALESCE(single.orientation, CASE WHEN single.position IN ('lane', 'street_side') THEN 'parallel' ELSE NULL END) = 'parallel' AND ST_Length(single.simple_geog) > dv.vehicle_length THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
+      WHEN COALESCE(single.orientation, CASE WHEN single.position IN ('lane', 'street_side') THEN 'parallel' ELSE NULL END) = 'diagonal' AND ST_Length(single.simple_geog) > dv.vehicle_diag_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
+      WHEN COALESCE(single.orientation, CASE WHEN single.position IN ('lane', 'street_side') THEN 'parallel' ELSE NULL END) = 'perpendicular' AND ST_Length(single.simple_geog) > dv.vehicle_width THEN floor((ST_Length(single.simple_geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
       ELSE 0
     END capacity,
     -- source:capacity bleibt 'estimated', da die Kapazität basierend auf Segmentlänge berechnet wird
     'estimated' "source:capacity",
     single.width width,
     single."offset" "offset",
+    single.parking_condition,
+    single.parking_condition_other,
+    single.parking_condition_other_time,
+    single.parking_condition_default,
+    single.parking_condition_time_interval,
+    single.parking_condition_maxstay,
+    single.fee,
+    single.fee_conditional,
+    single.access,
+    single.restriction,
+    single.restriction_taxi,
+    single.restriction_disabled,
+    single.restriction_car_sharing,
+    single.zone,
+    single.motorcar,
+    single.private,
+    single.disabled,
     single.geog single_geog,
     --single.error_output,
     single.geog_diff geog_diff,
@@ -2069,40 +2325,145 @@ WITH defval AS (
     *,
     sqrt(d.vehicle_width * 0.5 * d.vehicle_width) + sqrt(d.vehicle_length * 0.5 * d.vehicle_length) vehicle_diag_width
   FROM defval d
-), segments_with_lengths AS (
+), merged_segments AS (
+  -- Issue #66: Merge segments before calculation
+  -- Segmente mit gleichen parking-Tags werden vor der Kapazitätsberechnung zusammengeführt
+  -- Dies verhindert, dass kleine Segmente (z.B. durch Einfahrten getrennt) verloren gehen
   SELECT
+    -- Gruppierungs-Attribute
+    -- Cross-Way Merging: Array aller osm_ids + MIN für Kompatibilität
+    array_agg(DISTINCT pl.osm_id) AS osm_ids,
+    MIN(pl.osm_id) AS osm_id,
     pl.osm_type,
-    pl.osm_id,
     pl.side,
+    pl.position,
+    COALESCE(pl.orientation, 
+      CASE WHEN pl.position IN ('lane', 'street_side') THEN 'parallel' 
+           ELSE NULL 
+      END) AS orientation,
     pl.highway,
     pl."highway:name" highway_name,
     pl.operator_type,
     pl."highway:width_proc" highway_width_proc,
     pl."highway:width_proc:effective" highway_width_proc_effective,
     pl.surface,
-    pl.position,
-    pl.orientation,
-    pl.capacity_osm,
-    pl."source:capacity_osm" source_capacity_osm,
+    -- Cross-Way Merging: capacity_osm summieren wenn beide Segmente capacity_osm haben
+    SUM(pl.capacity_osm) AS capacity_osm,
+    MAX(pl."source:capacity_osm") AS source_capacity_osm,
     pl.width,
     pl."offset",
-    pl.geog,
-    ST_Length(pl.geog) AS segment_length,
-    -- Gesamtlänge aller Segmente mit gleichem osm_id, osm_type und side
-    SUM(ST_Length(pl.geog)) OVER (PARTITION BY pl.osm_id, pl.osm_type, pl.side) AS total_length,
-    -- Berechnete Kapazität basierend auf Segmentlänge (wie bisher)
-    CASE
-      WHEN pl.orientation = 'parallel' AND ST_Length(pl.geog) > dv.vehicle_length THEN round((ST_Length(pl.geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
-      WHEN pl.orientation = 'diagonal' AND ST_Length(pl.geog) > dv.vehicle_diag_width THEN round((ST_Length(pl.geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
-      WHEN pl.orientation = 'perpendicular' AND ST_Length(pl.geog) > dv.vehicle_width THEN round((ST_Length(pl.geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
-      -- Fallback: Wenn orientation NULL ist, aber position vorhanden, verwende parallel
-      WHEN pl.orientation IS NULL AND pl.position IN ('lane', 'street_side') AND ST_Length(pl.geog) > dv.vehicle_length THEN round((ST_Length(pl.geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
-      ELSE NULL
-    END capacity_calculated
+    pl.parking_condition,
+    pl.parking_condition_other,
+    pl.parking_condition_other_time,
+    pl.parking_condition_default,
+    pl.parking_condition_time_interval,
+    pl.parking_condition_maxstay,
+    pl.fee,
+    pl.fee_conditional,
+    pl.access,
+    pl.restriction,
+    pl.restriction_taxi,
+    pl.restriction_disabled,
+    pl.restriction_car_sharing,
+    pl.zone,
+    pl.motorcar,
+    pl.private,
+    pl.disabled,
+    
+    -- Geometrie zusammenführen
+    ST_LineMerge(ST_Union(pl.geog::geometry))::geography AS merged_geog,
+    
+    -- Metadaten
+    COUNT(*) AS original_segment_count,
+    SUM(ST_Length(pl.geog)) AS merged_length
+    
   FROM pl_dev_geog pl, dv
   WHERE
     ST_Length(pl.geog) > 1.7
     AND (pl.position NOT IN ('separate') OR pl.position IS NULL)
+  GROUP BY
+    -- Cross-Way Merging: Gruppiere nach highway_name (mit Fallback auf highway) statt osm_id
+    COALESCE(pl."highway:name", pl.highway),
+    pl.osm_type,
+    pl.side,
+    pl.position,
+    COALESCE(pl.orientation, 
+      CASE WHEN pl.position IN ('lane', 'street_side') THEN 'parallel' 
+           ELSE NULL 
+      END),
+    pl.highway,
+    pl."highway:name",
+    pl.operator_type,
+    pl."highway:width_proc",
+    pl."highway:width_proc:effective",
+    pl.surface,
+    pl.width,
+    pl."offset",
+    pl.parking_condition,
+    pl.parking_condition_other,
+    pl.parking_condition_other_time,
+    pl.parking_condition_default,
+    pl.parking_condition_time_interval,
+    pl.parking_condition_maxstay,
+    pl.fee,
+    pl.fee_conditional,
+    pl.access,
+    pl.restriction,
+    pl.restriction_taxi,
+    pl.restriction_disabled,
+    pl.restriction_car_sharing,
+    pl.zone,
+    pl.motorcar,
+    pl.private,
+    pl.disabled
+), segments_with_lengths AS (
+  SELECT
+    ms.osm_type,
+    ms.osm_id,
+    ms.side,
+    ms.highway,
+    ms.highway_name,
+    ms.operator_type,
+    ms.highway_width_proc,
+    ms.highway_width_proc_effective,
+    ms.surface,
+    ms.position,
+    ms.orientation,
+    ms.capacity_osm,
+    ms.source_capacity_osm,
+    ms.width,
+    ms."offset",
+    ms.parking_condition,
+    ms.parking_condition_other,
+    ms.parking_condition_other_time,
+    ms.parking_condition_default,
+    ms.parking_condition_time_interval,
+    ms.parking_condition_maxstay,
+    ms.fee,
+    ms.fee_conditional,
+    ms.access,
+    ms.restriction,
+    ms.restriction_taxi,
+    ms.restriction_disabled,
+    ms.restriction_car_sharing,
+    ms.zone,
+    ms.motorcar,
+    ms.private,
+    ms.disabled,
+    ms.merged_geog AS geog,
+    ST_Length(ms.merged_geog) AS segment_length,
+    -- Gesamtlänge: Bei merged segments ist das bereits die merged_length
+    ms.merged_length AS total_length,
+    -- Berechnete Kapazität basierend auf merged Länge
+    CASE
+      WHEN ms.orientation = 'parallel' AND ST_Length(ms.merged_geog) > dv.vehicle_length THEN round((ST_Length(ms.merged_geog) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
+      WHEN ms.orientation = 'diagonal' AND ST_Length(ms.merged_geog) > dv.vehicle_diag_width THEN round((ST_Length(ms.merged_geog) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
+      WHEN ms.orientation = 'perpendicular' AND ST_Length(ms.merged_geog) > dv.vehicle_width THEN round((ST_Length(ms.merged_geog) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
+      ELSE NULL
+    END capacity_calculated
+  FROM merged_segments ms, dv
+  WHERE
+    ST_Length(ms.merged_geog) > 1.7
 ), segments_with_capacity AS (
   SELECT
     *,
@@ -2119,6 +2480,148 @@ WITH defval AS (
       ELSE 'estimated'
     END source_capacity
   FROM segments_with_lengths
+), segments_with_geom AS (
+  SELECT
+    *,
+    -- Try to merge to LineString first
+    ST_LineMerge(geog::geometry) AS merged_geom
+  FROM segments_with_capacity
+), segments_with_dumped_geom AS (
+  -- Extrahiere ALLE Segmente aus MultiLineString
+  -- Dies verhindert, dass Segmente durch Einfahrten getrennt verloren gehen
+  SELECT
+    swg.*,
+    dumped.path[1] AS segment_index,
+    dumped.geom::geometry(LineString, 4326) AS geom,
+    ST_Length(dumped.geom::geography) AS segment_geom_length,
+    -- Berechne Kapazität für jedes Segment neu basierend auf seiner Länge
+    CASE
+      WHEN swg.orientation = 'parallel' AND ST_Length(dumped.geom::geography) > dv.vehicle_length THEN 
+        round((ST_Length(dumped.geom::geography) + (dv.vehicle_dist_para - dv.vehicle_length)) / dv.vehicle_dist_para)
+      WHEN swg.orientation = 'diagonal' AND ST_Length(dumped.geom::geography) > dv.vehicle_diag_width THEN 
+        round((ST_Length(dumped.geom::geography) + (dv.vehicle_dist_diag - dv.vehicle_diag_width)) / dv.vehicle_dist_diag)
+      WHEN swg.orientation = 'perpendicular' AND ST_Length(dumped.geom::geography) > dv.vehicle_width THEN 
+        round((ST_Length(dumped.geom::geography) + (dv.vehicle_dist_perp - dv.vehicle_width)) / dv.vehicle_dist_perp)
+      ELSE NULL
+    END AS segment_capacity_calculated,
+    -- Wenn capacity_osm vorhanden ist: verteile proportional zur Segmentlänge
+    CASE
+      WHEN swg.capacity_osm IS NOT NULL AND swg.total_length > 0 THEN
+        GREATEST(1, round(swg.capacity_osm * (ST_Length(dumped.geom::geography) / swg.total_length)))
+      ELSE NULL
+    END AS segment_capacity_osm
+  FROM segments_with_geom swg, dv
+  CROSS JOIN LATERAL (
+    SELECT 
+      (ST_Dump(
+        CASE 
+          WHEN ST_GeometryType(swg.merged_geom) = 'ST_MultiLineString' THEN
+            swg.merged_geom
+          ELSE
+            swg.merged_geom::geometry(MultiLineString, 4326)
+        END
+      )).path,
+      (ST_Dump(
+        CASE 
+          WHEN ST_GeometryType(swg.merged_geom) = 'ST_MultiLineString' THEN
+            swg.merged_geom
+          ELSE
+            swg.merged_geom::geometry(MultiLineString, 4326)
+        END
+      )).geom::geometry(LineString, 4326) AS geom
+  ) dumped
+  WHERE ST_GeometryType(swg.merged_geom) = 'ST_MultiLineString'
+), segments_with_longest_geom AS (
+  -- Für LineString: verwende direkt
+  SELECT
+    swg.osm_type,
+    swg.osm_id,
+    swg.side,
+    swg.highway,
+    swg.highway_name,
+    swg.operator_type,
+    swg.highway_width_proc,
+    swg.highway_width_proc_effective,
+    swg.surface,
+    swg.position,
+    swg.orientation,
+    swg.capacity_osm,
+    swg.source_capacity_osm,
+    swg.capacity,
+    swg.source_capacity,
+    swg.width,
+    swg."offset",
+    swg.parking_condition,
+    swg.parking_condition_other,
+    swg.parking_condition_other_time,
+    swg.parking_condition_default,
+    swg.parking_condition_time_interval,
+    swg.parking_condition_maxstay,
+    swg.fee,
+    swg.fee_conditional,
+    swg.access,
+    swg.restriction,
+    swg.restriction_taxi,
+    swg.restriction_disabled,
+    swg.restriction_car_sharing,
+    swg.zone,
+    swg.motorcar,
+    swg.private,
+    swg.disabled,
+    swg.segment_length,
+    swg.total_length,
+    swg.capacity_calculated,
+    swg.merged_geom::geometry(LineString, 4326) AS geom,
+    swg.merged_geom::geography AS geog
+  FROM segments_with_geom swg
+  WHERE ST_GeometryType(swg.merged_geom) = 'ST_LineString'
+  UNION ALL
+  -- Alle Segmente aus MultiLineString mit neu berechneter Kapazität
+  SELECT
+    swdg.osm_type,
+    swdg.osm_id,
+    swdg.side,
+    swdg.highway,
+    swdg.highway_name,
+    swdg.operator_type,
+    swdg.highway_width_proc,
+    swdg.highway_width_proc_effective,
+    swdg.surface,
+    swdg.position,
+    swdg.orientation,
+    swdg.capacity_osm,
+    swdg.source_capacity_osm,
+    -- Verwende neu berechnete Kapazität für dieses Segment
+    COALESCE(swdg.segment_capacity_osm, swdg.segment_capacity_calculated) AS capacity,
+    CASE
+      WHEN swdg.segment_capacity_osm IS NOT NULL THEN 'OSM'
+      ELSE 'estimated'
+    END AS source_capacity,
+    swdg.width,
+    swdg."offset",
+    swdg.parking_condition,
+    swdg.parking_condition_other,
+    swdg.parking_condition_other_time,
+    swdg.parking_condition_default,
+    swdg.parking_condition_time_interval,
+    swdg.parking_condition_maxstay,
+    swdg.fee,
+    swdg.fee_conditional,
+    swdg.access,
+    swdg.restriction,
+    swdg.restriction_taxi,
+    swdg.restriction_disabled,
+    swdg.restriction_car_sharing,
+    swdg.zone,
+    swdg.motorcar,
+    swdg.private,
+    swdg.disabled,
+    swdg.segment_geom_length AS segment_length,
+    swdg.total_length,
+    swdg.segment_capacity_calculated AS capacity_calculated,
+    swdg.geom,
+    swdg.geom::geography AS geog
+  FROM segments_with_dumped_geom swdg
 )
 SELECT
     osm_type,
@@ -2144,7 +2647,8 @@ SELECT
 		--WHEN position IN ('separate') THEN 'not_processed_yet'
 		-- Zuerst prüfen, ob Daten fehlen (höchste Priorität)
 		WHEN position IS NULL THEN 'data_missing'
-		WHEN position IN ('street_side', 'lane') AND orientation IS NULL THEN 'data_missing_orientation'
+		-- Issue #87: orientation wird jetzt auf 'parallel' gesetzt, wenn position vorhanden ist
+		-- Daher wird data_missing_orientation nicht mehr benötigt für lane/street_side
 		WHEN position IN ('street_side', 'lane') AND capacity IS NULL THEN 'segment_too_small'
 		WHEN position IN ('street_side', 'lane') THEN 'processed'
 		WHEN position IN ('no') THEN 'no_parking'
@@ -2152,10 +2656,76 @@ SELECT
 		WHEN capacity IS NULL THEN 'data_missing'
 		ELSE 'other'
 	END capacity_status,
+    -- Issue #86: Attribut für Art des Parkplatzes (öffentlich/kunden/anwohner)
+    -- Für Liniendaten: Default = "Öffentlicher Parkplatz" wenn kein access (außer operator_type=private)
+    CASE
+        -- Öffentlicher Parkplatz: access=yes ODER motorcar=yes|designated (auch wenn access=no)
+        WHEN access = 'yes' OR motorcar IN ('yes', 'designated') THEN 'public'
+        -- Kundenparkplatz: access=customers
+        WHEN access = 'customers' THEN 'customers'
+        -- Anwohnerparkplatz: access=private + private=residents
+        WHEN access = 'private' AND private = 'residents' THEN 'residents'
+        -- Mitarbeiterparkplatz: access=private + private=employees
+        WHEN access = 'private' AND private = 'employees' THEN 'employees'
+        -- Gewerbeparkplatz: access=private + private=commercial
+        WHEN access = 'private' AND private = 'commercial' THEN 'commercial'
+        -- Anwohnerparkplatz: access=private (ohne private-Tag, wird durch condition_class 'residents' ergänzt)
+        WHEN access = 'private' THEN 'residents'
+        -- Sonstiger/Unbestimmter: wenn operator_type=private und kein access
+        WHEN access IS NULL AND operator_type = 'private' THEN 'other'
+        -- Öffentlicher Parkplatz: Default für Liniendaten wenn kein access angegeben
+        WHEN access IS NULL THEN 'public'
+        -- Sonstiger/Unbestimmter: alles andere
+        ELSE 'other'
+    END parking_access_type,
+    -- condition_class Berechnung basierend auf Issue #80
+    -- Als Array, da mehrere Werte gleichzeitig auftreten können
+    ARRAY_REMOVE(ARRAY[
+        -- Basiswerte (gegenseitig ausschließend - nur einer wird gesetzt)
+        CASE
+            -- mixed: Parkgebühr fällig UND Parkzone getaggt
+            WHEN position IN ('lane', 'street_side') 
+                AND (fee IN ('yes', 'interval') OR fee_conditional IS NOT NULL) 
+                AND zone IS NOT NULL THEN 'mixed'
+            -- residents: privater access UND Parkzone getaggt
+            WHEN position IN ('lane', 'street_side') 
+                AND access = 'private' 
+                AND zone IS NOT NULL 
+                AND NOT (fee IN ('yes', 'interval') OR fee_conditional IS NOT NULL) THEN 'residents'
+            -- paid: Parkgebühr fällig UND keine Parkzone getaggt
+            WHEN position IN ('lane', 'street_side') 
+                AND (fee IN ('yes', 'interval') OR fee_conditional IS NOT NULL) 
+                AND zone IS NULL THEN 'paid'
+            -- free: Keine Parkgebühr UND keine Parkzone getaggt
+            WHEN position IN ('lane', 'street_side') 
+                AND (fee IS NULL OR fee = 'no') 
+                AND fee_conditional IS NULL 
+                AND zone IS NULL 
+                AND access != 'private' THEN 'free'
+            ELSE NULL
+        END,
+        -- Zusätzliche Werte (kombinierbar)
+        CASE WHEN parking_condition = 'loading_only' OR restriction = 'loading_only' THEN 'loading' END,
+        CASE WHEN parking_condition = 'charging_only' OR restriction = 'charging_only' THEN 'charging' END,
+        CASE WHEN parking_condition = 'disabled' AND access = 'private' THEN 'disabled_private' END,
+        CASE WHEN parking_condition_maxstay IS NOT NULL THEN 'time_limited' END,
+        CASE WHEN (parking_condition = 'disabled' OR restriction_disabled IS NOT NULL) 
+            AND NOT (parking_condition = 'disabled' AND access = 'private') THEN 'disabled' END,
+        CASE WHEN parking_condition = 'taxi' OR restriction_taxi IS NOT NULL THEN 'taxi' END,
+        CASE WHEN parking_condition = 'car_sharing' OR restriction_car_sharing IS NOT NULL THEN 'car_sharing' END,
+        CASE WHEN restriction IS NOT NULL 
+            AND restriction NOT IN ('loading_only', 'charging_only')
+            AND restriction_taxi IS NULL 
+            AND restriction_disabled IS NULL 
+            AND restriction_car_sharing IS NULL THEN 'vehicle_restriction' END,
+        CASE WHEN access IS NOT NULL AND access != 'private' AND access != 'yes' THEN 'access_restriction' END,
+        CASE WHEN parking_condition = 'no_parking' OR parking_condition_other = 'no_parking' THEN 'no_parking' END,
+        CASE WHEN parking_condition = 'no_stopping' OR parking_condition_other = 'no_stopping' THEN 'no_stopping' END
+    ], NULL) condition_class,
     --error_output,
-    geog::geometry(LineString, 4326) geom,
+    geom,
     geog
-FROM segments_with_capacity
+FROM segments_with_longest_geom
 ;
 ALTER TABLE parking_segments ADD COLUMN id SERIAL PRIMARY KEY;
 CREATE UNIQUE INDEX ON parking_segments (id);
